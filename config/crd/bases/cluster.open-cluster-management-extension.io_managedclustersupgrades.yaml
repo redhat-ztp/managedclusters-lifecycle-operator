@@ -1,0 +1,358 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.7.0
+  creationTimestamp: null
+  name: managedclustersupgrades.cluster.open-cluster-management-extension.io
+spec:
+  group: cluster.open-cluster-management-extension.io
+  names:
+    kind: ManagedClustersUpgrade
+    listKind: ManagedClustersUpgradeList
+    plural: managedclustersupgrades
+    singular: managedclustersupgrade
+  scope: Namespaced
+  versions:
+  - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: ManagedClustersUpgrade is the Schema for the managedclustersupgrades
+          API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ManagedClustersUpgradeSpec defines the desired state of ManagedClustersUpgrade
+            properties:
+              clusterSelector:
+                description: A label selector is a label query over a set of resources.
+                  The result of matchLabels and matchExpressions are ANDed. An empty
+                  label selector matches all objects. A null label selector matches
+                  no objects.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: A label selector requirement is a selector that
+                        contains values, a key, and an operator that relates the key
+                        and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: operator represents a key's relationship to
+                            a set of values. Valid operators are In, NotIn, Exists
+                            and DoesNotExist.
+                          type: string
+                        values:
+                          description: values is an array of string values. If the
+                            operator is In or NotIn, the values array must be non-empty.
+                            If the operator is Exists or DoesNotExist, the values
+                            array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: matchLabels is a map of {key,value} pairs. A single
+                      {key,value} in the matchLabels map is equivalent to an element
+                      of matchExpressions, whose key field is "key", the operator
+                      is "In", and the values array contains only "value". The requirements
+                      are ANDed.
+                    type: object
+                type: object
+              clusterVersion:
+                description: ClusterVersionSpec
+                properties:
+                  channel:
+                    description: channel name for cluster upgrade
+                    type: string
+                  image:
+                    description: Image url for cluster upgrade
+                    type: string
+                  upstream:
+                    description: upstream url for cluster upgrade
+                    type: string
+                  version:
+                    description: version for cluster upgrade
+                    type: string
+                required:
+                - version
+                type: object
+              clusters:
+                items:
+                  description: GenericClusterReference
+                  properties:
+                    name:
+                      description: Cluster Name
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+              managedClusterLabelAction:
+                description: ManagedClusterLabelAction
+                properties:
+                  afterClusterUpgrade:
+                    description: After cluster version upgrade done make label action
+                      for the selected managed cluster.
+                    properties:
+                      addClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: AddClusterLabels is a map of key/value pairs
+                          labels that will be added to the selected managedClusters.
+                        type: object
+                      deleteClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: DeleteClusterLabels is a map of key/value pairs
+                          labels that will be deleted from the selected managedClusters.
+                        type: object
+                    type: object
+                  afterUpgrade:
+                    description: After the upgrade (clusterVersion & operators) done
+                      make label action for the selected managed cluster.
+                    properties:
+                      addClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: AddClusterLabels is a map of key/value pairs
+                          labels that will be added to the selected managedClusters.
+                        type: object
+                      deleteClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: DeleteClusterLabels is a map of key/value pairs
+                          labels that will be deleted from the selected managedClusters.
+                        type: object
+                    type: object
+                  beforeUpgrade:
+                    description: Before starting the upgrade make label action for
+                      the selected managed cluster.
+                    properties:
+                      addClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: AddClusterLabels is a map of key/value pairs
+                          labels that will be added to the selected managedClusters.
+                        type: object
+                      deleteClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: DeleteClusterLabels is a map of key/value pairs
+                          labels that will be deleted from the selected managedClusters.
+                        type: object
+                    type: object
+                type: object
+              operators:
+                description: OperatorsSpec
+                properties:
+                  approveAllUpgrades:
+                    default: true
+                    description: ApproveAllUpgrade is a boolean flag to approve all
+                      the installed operators installPlan for the selected managed
+                      clusters after cluster upgrade is done. When set to false only
+                      selected operator in the include list will be approved
+                    type: boolean
+                  exclude:
+                    description: List of the selected operators to not approve its
+                      installPlan after cluster upgrade done.
+                    items:
+                      description: GenericOperatorReference
+                      properties:
+                        name:
+                          description: Operator->Subscription Name
+                          type: string
+                        namespace:
+                          description: Operator->Subscription Namespace
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                    type: array
+                  include:
+                    description: List of the selected operators to approve its installPlan
+                      after cluster upgrade done.
+                    items:
+                      description: GenericOperatorReference
+                      properties:
+                        name:
+                          description: Operator->Subscription Name
+                          type: string
+                        namespace:
+                          description: Operator->Subscription Namespace
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                    type: array
+                required:
+                - approveAllUpgrades
+                type: object
+              remediationStrategy:
+                description: RemediationStrategySpec defines the remediation Strategy
+                properties:
+                  CanaryClusters:
+                    description: CanaryClusters defines the list of managedClusters
+                      that should be remediated first
+                    properties:
+                      clusterSelector:
+                        description: A label selector is a label query over a set
+                          of resources. The result of matchLabels and matchExpressions
+                          are ANDed. An empty label selector matches all objects.
+                          A null label selector matches no objects.
+                        properties:
+                          matchExpressions:
+                            description: matchExpressions is a list of label selector
+                              requirements. The requirements are ANDed.
+                            items:
+                              description: A label selector requirement is a selector
+                                that contains values, a key, and an operator that
+                                relates the key and values.
+                              properties:
+                                key:
+                                  description: key is the label key that the selector
+                                    applies to.
+                                  type: string
+                                operator:
+                                  description: operator represents a key's relationship
+                                    to a set of values. Valid operators are In, NotIn,
+                                    Exists and DoesNotExist.
+                                  type: string
+                                values:
+                                  description: values is an array of string values.
+                                    If the operator is In or NotIn, the values array
+                                    must be non-empty. If the operator is Exists or
+                                    DoesNotExist, the values array must be empty.
+                                    This array is replaced during a strategic merge
+                                    patch.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - key
+                              - operator
+                              type: object
+                            type: array
+                          matchLabels:
+                            additionalProperties:
+                              type: string
+                            description: matchLabels is a map of {key,value} pairs.
+                              A single {key,value} in the matchLabels map is equivalent
+                              to an element of matchExpressions, whose key field is
+                              "key", the operator is "In", and the values array contains
+                              only "value". The requirements are ANDed.
+                            type: object
+                        type: object
+                      clusters:
+                        items:
+                          description: GenericClusterReference
+                          properties:
+                            name:
+                              description: Cluster Name
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                    type: object
+                  maxConcurrency:
+                    description: Max number of clusters to perform upgrade at the
+                      same time
+                    type: integer
+                  timeout:
+                    default: 240
+                    description: TimeOut for cluster upgrade process
+                    type: integer
+                required:
+                - maxConcurrency
+                type: object
+            type: object
+          status:
+            description: ManagedClustersUpgradeStatus defines the observed state of
+              ManagedClustersUpgrade
+            properties:
+              clusters:
+                description: List of the selected managedClusters with its upgrade
+                  status
+                items:
+                  properties:
+                    clusterVersionStatus:
+                      description: ManagedCluster clusterVersion upgrade status
+                      properties:
+                        image:
+                          description: image is a container image location that contains
+                            the update. This value is always populated.
+                          type: string
+                        state:
+                          description: state reflects whether the update was fully
+                            applied. The Partial state indicates the update is not
+                            fully applied, while the Completed state indicates the
+                            update was successfully rolled out at least once (all
+                            parts of the update successfully applied).
+                          type: string
+                        verified:
+                          description: verified indicates whether the provided update
+                            was properly verified before it was installed. If this
+                            is false the cluster may not be trusted.
+                          type: boolean
+                        version:
+                          description: version is a semantic versioning identifying
+                            the update version. If the requested image does not define
+                            a version, or if a failure occurs retrieving the image,
+                            this value may be empty.
+                          type: string
+                      type: object
+                    name:
+                      description: ManagedCluster Name
+                      type: string
+                    operatorsStatus:
+                      description: ManagedCluster Operators Upgrade status
+                      properties:
+                        upgradeApproved:
+                          type: boolean
+                      required:
+                      - upgradeApproved
+                      type: object
+                  required:
+                  - name
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

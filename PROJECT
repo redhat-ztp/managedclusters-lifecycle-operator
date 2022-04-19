@@ -1,0 +1,21 @@
+domain: open-cluster-management-extension.io
+layout:
+- go.kubebuilder.io/v3
+multigroup: true
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+  sdk.x-openshift.io/v1: {}
+projectName: managedclusters-lifecycle-operator
+repo: github.com/redhat-ztp/managedclusters-lifecycle-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: open-cluster-management-extension.io
+  group: cluster
+  kind: ManagedClustersUpgrade
+  path: github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1
+  version: v1beta1
+version: "3"

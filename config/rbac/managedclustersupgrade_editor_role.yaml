@@ -1,0 +1,24 @@
+# permissions for end users to edit managedclustersupgrades.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: managedclustersupgrade-editor-role
+rules:
+- apiGroups:
+  - cluster.open-cluster-management-extension.io
+  resources:
+  - managedclustersupgrades
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cluster.open-cluster-management-extension.io
+  resources:
+  - managedclustersupgrades/status
+  verbs:
+  - get
