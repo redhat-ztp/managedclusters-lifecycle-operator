@@ -19,17 +19,19 @@ package cluster
 import (
 	"context"
 
+	"github.com/go-logr/logr"
+	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	//"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // ManagedClustersUpgradeReconciler reconciles a ManagedClustersUpgrade object
 type ManagedClustersUpgradeReconciler struct {
 	client.Client
+	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 
@@ -47,9 +49,21 @@ type ManagedClustersUpgradeReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	//_ = log.FromContext(ctx)
+	log := r.Log.WithValues("ManagedClustersUpgrade", req.NamespacedName)
+	managedClustersUpgrade := &clusterv1beta1.ManagedClustersUpgrade{}
+	err := r.Get(ctx, req.NamespacedName, managedClustersUpgrade)
 
-	// TODO(user): your logic here
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("ManagedClustersUpgrade resource not found. Ignoring since object must be deleted")
+			return ctrl.Result{}, nil
+		}
+		log.Error(err, "Failed to get ManagedClustersUpgrade")
+		return ctrl.Result{}, err
+	} else {
+		log.Info("managedClustersUpgrade {}", managedClustersUpgrade)
+	}
 
 	return ctrl.Result{}, nil
 }

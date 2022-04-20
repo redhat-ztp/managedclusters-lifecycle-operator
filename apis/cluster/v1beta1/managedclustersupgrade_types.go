@@ -23,7 +23,7 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// GenericOperatorReference
+// Generic Operator Reference
 type GenericOperatorReference struct {
 	// Operator->Subscription Name
 	Name string `json:"name"`
@@ -31,19 +31,19 @@ type GenericOperatorReference struct {
 	Namespace string `json:"namespace"`
 }
 
-// GenericClusterReference
+// Generic Cluster Reference
 type GenericClusterReference struct {
 	// Cluster Name
 	Name string `json:"name"`
 }
 
-// GenericPlacementFields
+// Generic Placement Fields
 type GenericPlacementFields struct {
 	Clusters        []GenericClusterReference `json:"clusters,omitempty"`
 	ClusterSelector *metav1.LabelSelector     `json:"clusterSelector,omitempty"`
 }
 
-// RemediationStrategySpec defines the remediation Strategy
+// RemediationStrategy defines the remediation Strategy
 type RemediationStrategySpec struct {
 	// CanaryClusters defines the list of managedClusters that should be remediated first
 	CanaryClusters GenericPlacementFields `json:"CanaryClusters,omitempty"`
@@ -55,7 +55,7 @@ type RemediationStrategySpec struct {
 	Timeout int `json:"timeout,omitempty"`
 }
 
-// LabelAction
+// Label Action define the desire action for labeling the selected managed clusters
 type LabelAction struct {
 	// AddClusterLabels is a map of key/value pairs labels that will be added to the selected managedClusters.
 	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
@@ -63,17 +63,17 @@ type LabelAction struct {
 	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
 }
 
-// ManagedClusterLabelAction
+// ManagedClusterLabelAction define the desire state to label the selected managed clusters
 type ManagedClusterLabelActionSpec struct {
 	// Before starting the upgrade make label action for the selected managed cluster.
-	BeforeUpgrade       LabelAction `json:"beforeUpgrade,omitempty"`
+	BeforeUpgrade LabelAction `json:"beforeUpgrade,omitempty"`
 	// After cluster version upgrade done make label action for the selected managed cluster.
 	AfterClusterUpgrade LabelAction `json:"afterClusterUpgrade,omitempty"`
 	// After the upgrade (clusterVersion & operators) done make label action for the selected managed cluster.
-	AfterUpgrade        LabelAction `json:"afterUpgrade,omitempty"`
+	AfterUpgrade LabelAction `json:"afterUpgrade,omitempty"`
 }
 
-// ClusterVersionSpec
+// ClusterVersion define the desired state of ClusterVersion
 type ClusterVersionSpec struct {
 	// version for cluster upgrade
 	Version string `json:"version"`
@@ -88,31 +88,31 @@ type ClusterVersionSpec struct {
 	Image string `json:"image,omitempty"`
 }
 
-// OperatorsSpec
-type OperatorsSpec struct {
+// OcpOperators define the desire action for ocp operator upgrade
+type OcpOperatorsSpec struct {
 	// ApproveAllUpgrade is a boolean flag to approve all the installed operators installPlan for the selected
 	// managed clusters after cluster upgrade is done. When set to false only selected operator in the include list
 	// will be approved
 	//+kubebuilder:default=true
-	ApproveAllUpgrades   *bool    `json:"approveAllUpgrades"`
+	ApproveAllUpgrades *bool `json:"approveAllUpgrades"`
 	// List of the selected operators to approve its installPlan after cluster upgrade done.
 	Include []GenericOperatorReference `json:"include,omitempty"`
 	// List of the selected operators to not approve its installPlan after cluster upgrade done.
 	Exclude []GenericOperatorReference `json:"exclude,omitempty"`
 }
 
-// ManagedClustersUpgradeSpec defines the desired state of ManagedClustersUpgrade
+// ManagedClustersUpgrade defines the desired state of ManagedClustersUpgrade
 type ManagedClustersUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	GenericPlacementFields    `json:",inline"`
+	GenericPlacementFields `json:",inline"`
 
-	RemediationStrategy       *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
+	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
 	// +optional
-	ClusterVersion            *ClusterVersionSpec      `json:"clusterVersion,omitempty"`
+	ClusterVersion *ClusterVersionSpec `json:"clusterVersion,omitempty"`
 	// +optional
-	Operators                 *OperatorsSpec           `json:"operators,omitempty"`
+	OcpOperators *OcpOperatorsSpec `json:"ocpOperators,omitempty"`
 	// +optional
 	ManagedClusterLabelAction *ManagedClusterLabelActionSpec `json:"managedClusterLabelAction,omitempty"`
 }
@@ -126,25 +126,17 @@ type ClusterVersionStatus struct {
 	// parts of the update successfully applied).
 	State string `json:"state,omitempty"`
 
-	// version is a semantic versioning identifying the update version. If the
-	// requested image does not define a version, or if a failure occurs
-	// retrieving the image, this value may be empty.
-	Version string `json:"version,omitempty"`
-
-	// image is a container image location that contains the update. This value
-	// is always populated.
-	Image string `json:"image,omitempty"`
-
 	// verified indicates whether the provided update was properly verified
 	// before it was installed. If this is false the cluster may not be trusted.
 	Verified bool `json:"verified,omitempty"`
 }
 
-// OperatorStatus indicate that operators installPlan approved or
+// OperatorStatus indicate that operators installPlan approved
 type OperatorsStatus struct {
-	UpgradeApproved   *bool    `json:"upgradeApproved"`
+	UpgradeApproved *bool `json:"upgradeApproved"`
 }
 
+// ClusterStatus indicate the selected clusters upgrade status
 type ClusterStatusSpec struct {
 	// ManagedCluster Name
 	Name string `json:"name"`

@@ -1,0 +1,48 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: managedclusters-lifecycle-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: ManagedClustersUpgrade is the Schema for the managedclustersupgrades
+        API
+      displayName: Managed Clusters Upgrade
+      kind: ManagedClustersUpgrade
+      name: managedclustersupgrades.cluster.open-cluster-management-extension.io
+      version: v1beta1
+  description: managedclusters-lifecycle-operator provide ocp upgrade and ocp operators
+    upgrade for the ACM managed clusters
+  displayName: managedclusters-lifecycle-operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - upgrade
+  - managedclusters
+  - operators
+  links:
+  - name: Managedclusters Lifecycle Operator
+    url: https://managedclusters-lifecycle-operator.domain
+  maturity: alpha
+  provider:
+    name: redhat
+  version: 0.0.0

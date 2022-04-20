@@ -35,7 +35,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ManagedClustersUpgradeSpec defines the desired state of ManagedClustersUpgrade
+            description: ManagedClustersUpgrade defines the desired state of ManagedClustersUpgrade
             properties:
               clusterSelector:
                 description: A label selector is a label query over a set of resources.
@@ -85,7 +85,7 @@ spec:
                     type: object
                 type: object
               clusterVersion:
-                description: ClusterVersionSpec
+                description: ClusterVersion define the desired state of ClusterVersion
                 properties:
                   channel:
                     description: channel name for cluster upgrade
@@ -104,7 +104,7 @@ spec:
                 type: object
               clusters:
                 items:
-                  description: GenericClusterReference
+                  description: Generic Cluster Reference
                   properties:
                     name:
                       description: Cluster Name
@@ -114,7 +114,8 @@ spec:
                   type: object
                 type: array
               managedClusterLabelAction:
-                description: ManagedClusterLabelAction
+                description: ManagedClusterLabelAction define the desire state to
+                  label the selected managed clusters
                 properties:
                   afterClusterUpgrade:
                     description: After cluster version upgrade done make label action
@@ -168,8 +169,9 @@ spec:
                         type: object
                     type: object
                 type: object
-              operators:
-                description: OperatorsSpec
+              ocpOperators:
+                description: OcpOperators define the desire action for ocp operator
+                  upgrade
                 properties:
                   approveAllUpgrades:
                     default: true
@@ -182,7 +184,7 @@ spec:
                     description: List of the selected operators to not approve its
                       installPlan after cluster upgrade done.
                     items:
-                      description: GenericOperatorReference
+                      description: Generic Operator Reference
                       properties:
                         name:
                           description: Operator->Subscription Name
@@ -199,7 +201,7 @@ spec:
                     description: List of the selected operators to approve its installPlan
                       after cluster upgrade done.
                     items:
-                      description: GenericOperatorReference
+                      description: Generic Operator Reference
                       properties:
                         name:
                           description: Operator->Subscription Name
@@ -216,7 +218,7 @@ spec:
                 - approveAllUpgrades
                 type: object
               remediationStrategy:
-                description: RemediationStrategySpec defines the remediation Strategy
+                description: RemediationStrategy defines the remediation Strategy
                 properties:
                   CanaryClusters:
                     description: CanaryClusters defines the list of managedClusters
@@ -272,7 +274,7 @@ spec:
                         type: object
                       clusters:
                         items:
-                          description: GenericClusterReference
+                          description: Generic Cluster Reference
                           properties:
                             name:
                               description: Cluster Name
@@ -302,14 +304,12 @@ spec:
                 description: List of the selected managedClusters with its upgrade
                   status
                 items:
+                  description: ClusterStatus indicate the selected clusters upgrade
+                    status
                   properties:
                     clusterVersionStatus:
                       description: ManagedCluster clusterVersion upgrade status
                       properties:
-                        image:
-                          description: image is a container image location that contains
-                            the update. This value is always populated.
-                          type: string
                         state:
                           description: state reflects whether the update was fully
                             applied. The Partial state indicates the update is not
@@ -322,12 +322,6 @@ spec:
                             was properly verified before it was installed. If this
                             is false the cluster may not be trusted.
                           type: boolean
-                        version:
-                          description: version is a semantic versioning identifying
-                            the update version. If the requested image does not define
-                            a version, or if a failure occurs retrieving the image,
-                            this value may be empty.
-                          type: string
                       type: object
                     name:
                       description: ManagedCluster Name
