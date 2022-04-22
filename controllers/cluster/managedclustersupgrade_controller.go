@@ -19,19 +19,18 @@ package cluster
 import (
 	"context"
 
-	"github.com/go-logr/logr"
 	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	//"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // ManagedClustersUpgradeReconciler reconciles a ManagedClustersUpgrade object
 type ManagedClustersUpgradeReconciler struct {
 	client.Client
-	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 
@@ -49,8 +48,7 @@ type ManagedClustersUpgradeReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	//_ = log.FromContext(ctx)
-	log := r.Log.WithValues("ManagedClustersUpgrade", req.NamespacedName)
+	log := log.FromContext(ctx)
 	managedClustersUpgrade := &clusterv1beta1.ManagedClustersUpgrade{}
 	err := r.Get(ctx, req.NamespacedName, managedClustersUpgrade)
 
@@ -62,10 +60,25 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 		log.Error(err, "Failed to get ManagedClustersUpgrade")
 		return ctrl.Result{}, err
 	} else {
-		log.Info("managedClustersUpgrade {}", managedClustersUpgrade)
+		log.Info(managedClustersUpgrade.Name)
+		if len(managedClustersUpgrade.Spec.Clusters) > 0 {
+
+		}
+		if len(managedClustersUpgrade.Spec.ClusterSelector.MatchExpressions) > 0 {
+
+		}
+		if len(managedClustersUpgrade.Spec.ClusterSelector.MatchLabels) > 0 {
+
+		}
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ManagedClustersUpgradeReconciler) GetManagedClusters(ctx context.Context, mcu *clusterv1beta1.ManagedClustersUpgrade) error {
+
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

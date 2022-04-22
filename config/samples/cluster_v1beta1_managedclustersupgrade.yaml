@@ -3,4 +3,7 @@ kind: ManagedClustersUpgrade
 metadata:
   name: managedclustersupgrade-sample
 spec:
-  # TODO(user): Add fields here
+  clusters:
+  - name: myCluster
+  ocpOperators:
+    approveAllUpgrades: true
