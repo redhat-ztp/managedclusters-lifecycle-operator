@@ -23,6 +23,10 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+const (
+	NotStartedState = "NotStarted"
+)
+
 // Generic Operator Reference
 type GenericOperatorReference struct {
 	// Operator->Subscription Name
@@ -39,6 +43,7 @@ type GenericClusterReference struct {
 
 // Generic Placement Fields
 type GenericPlacementFields struct {
+	// Clusters listed with name will be selected and ignoring other clusterSelectors
 	Clusters        []GenericClusterReference `json:"clusters,omitempty"`
 	ClusterSelector *metav1.LabelSelector     `json:"clusterSelector,omitempty"`
 }
@@ -120,20 +125,26 @@ type ManagedClustersUpgradeSpec struct {
 // ClusterVersionStatus is a single attempted update to the cluster.
 // the original definition is from https://github.com/stolostron/multicloud-operators-foundation/blob/main/pkg/apis/internal.open-cluster-management.io/v1beta1/clusterinfo_types.go
 type ClusterVersionStatus struct {
-	// state reflects whether the update was fully applied. The Partial state
-	// indicates the update is not fully applied, while the Completed state
-	// indicates the update was successfully rolled out at least once (all
-	// parts of the update successfully applied).
+	// state reflects whether the update was fully applied. The NotStart state
+	// indicates the update is not start yet. The Partial state indicates the
+	// update is not fully applied, while the Completed state indicates the update
+	// was successfully rolled out at least once (all parts of the update successfully applied).
 	State string `json:"state,omitempty"`
 
 	// verified indicates whether the provided update was properly verified
 	// before it was installed. If this is false the cluster may not be trusted.
+	//+kubebuilder:default=false
 	Verified bool `json:"verified,omitempty"`
+
+	// canary indicate the cluster is from canary remediated clusters list
+	//+kubebuilder:default=false
+	Canary bool `json:"canary,omitempty"`
 }
 
 // OperatorStatus indicate that operators installPlan approved
 type OperatorsStatus struct {
-	UpgradeApproved *bool `json:"upgradeApproved"`
+	//+kubebuilder:default=false
+	UpgradeApproved *bool `json:"upgradeApproved,omitempty"`
 }
 
 // ClusterStatus indicate the selected clusters upgrade status
@@ -150,6 +161,9 @@ type ClusterStatusSpec struct {
 type ManagedClustersUpgradeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	//Conditions contains the different condition statuses for ManagedClustersUpgrade
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// List of the selected managedClusters with its upgrade status
 	Clusters []ClusterStatusSpec `json:"clusters,omitempty"`
