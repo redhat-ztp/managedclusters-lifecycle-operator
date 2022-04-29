@@ -18,8 +18,9 @@ package cluster
 
 import (
 	"context"
-	"fmt"
+	//"fmt"
 
+	//clusterinfov1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/internal.open-cluster-management.io/v1beta1"
 	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
 	//clusterv1 "open-cluster-management.io/api/cluster/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,8 +28,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
+	//workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	//"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -63,54 +66,134 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 		klog.Error(err, "Failed to get ManagedClustersUpgrade")
 		return ctrl.Result{}, err
 	} else {
-		klog.Info(managedClustersUpgrade.Name)
-		if len(managedClustersUpgrade.Status.Conditions) == 0 {
+		//klog.Info(managedClustersUpgrade.Name)
 
-			condition := metav1.Condition{}
-			clustersStatus, err := r.initClustersList(r.Client, managedClustersUpgrade.Spec.GenericPlacementFields, &condition)
+		if condition := apimeta.FindStatusCondition(managedClustersUpgrade.Status.Conditions, TypeComplete); condition != nil {
+			//klog.Info("type complete")
+		}
+		if condition := apimeta.FindStatusCondition(managedClustersUpgrade.Status.Conditions, TypeInProgress); condition != nil {
+			klog.Info("type inprogress")
+			if condition.Status == metav1.ConditionFalse {
+				// Check if the ManifestWork get Applied without errors
+				for _, cluster := range managedClustersUpgrade.Status.Clusters {
+					if cluster.ClusterVersionStatus.State == clusterv1beta1.InitializedState {
+
+					}
+					if cluster.ClusterVersionStatus.State == clusterv1beta1.OperatorsUpgradeState {
+
+					}
+				}
+				condition.Status = metav1.ConditionTrue
+			}
+			if condition.Status == metav1.ConditionTrue {
+				// Check the ManagedClusterInfo state OR Create/check operatorManifest state
+				for _, cluster := range managedClustersUpgrade.Status.Clusters {
+					if cluster.ClusterVersionStatus.State == clusterv1beta1.InitializedState {
+
+					}
+					if cluster.ClusterVersionStatus.State == clusterv1beta1.PartialState {
+
+					}
+					if cluster.ClusterVersionStatus.State == clusterv1beta1.CompleteState {
+
+					}
+					if cluster.ClusterVersionStatus.State == clusterv1beta1.OperatorsUpgradeState {
+
+					}
+				}
+			}
+		}
+		if condition := apimeta.FindStatusCondition(managedClustersUpgrade.Status.Conditions, TypeApplied); condition != nil {
+			klog.Info("type applied")
+			if condition.Status == metav1.ConditionFalse {
+				//manifestWorks := []*workv1.ManifestWork{}
+				manifestCreated := false
+				for _, cluster := range managedClustersUpgrade.Status.Clusters {
+					manifestWork, err := CreateClusterVersionUpgradeManifestWork(cluster.ClusterID, cluster.Name, managedClustersUpgrade.Spec.ClusterVersion)
+					clusterState := clusterv1beta1.InitializedState
+					if err != nil {
+						klog.Info("ClusterVersion ManifestWork not initaliz: "+cluster.Name+" ", err)
+
+						manifestWork, err = CreateOperatorUpgradeManifestWork(cluster.Name, managedClustersUpgrade.Spec.OcpOperators)
+						if err != nil {
+							klog.Info("OCP Operators ManifestWork not initaliz: "+cluster.Name+" ", err)
+						}
+						clusterState = clusterv1beta1.OperatorsUpgradeState
+					}
+
+					if manifestWork == nil {
+						continue
+					}
+
+					if err := controllerutil.SetOwnerReference(managedClustersUpgrade, manifestWork, r.Scheme); err != nil {
+						klog.Error("Manifest set Owner Ref: " + cluster.Name + " ", err)
+						//return ctrl.Result{}, nil
+					}
+					//manifestWorks = append(manifestWorks, manifestWork)
+					err = r.Client.Create(ctx, manifestWork)
+					if err != nil {
+						klog.Error("ManifestWork create: " + cluster.Name + " ", err)
+						continue
+					}
+					//klog.Info("ManifestWork Created ", manifestWork)
+					cluster.ClusterVersionStatus.State = clusterState
+					manifestCreated = true
+				}
+
+				if manifestCreated {
+					//for _, mw := range manifestWorks {
+					//	err = r.Client.Create(ctx, mw)
+					//	if err != nil {
+					//		klog.Error("ManifestWork create: ", cluster.Name, err)
+					//	}
+					//	klog.Info("ManifestWork Created ", mw)
+					//}
+					condition.Status = metav1.ConditionTrue
+					apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, GetInProgressCondition())
+				}
+			}
+		}
+		if condition := apimeta.FindStatusCondition(managedClustersUpgrade.Status.Conditions, TypeSelected); condition != nil {
+			klog.Info("type selected")
+			if condition.Reason == ReasonNotSelected && condition.Status == metav1.ConditionFalse {
+				//klog.Info("reason not selected")
+				clustersStatus, err := r.initClustersList(r.Client, managedClustersUpgrade.Spec.GenericPlacementFields)
+				if err != nil {
+					klog.Error("Listing clusters: ", err)
+					return ctrl.Result{}, nil
+				}
+
+				managedClustersUpgrade.Status.Clusters = clustersStatus
+				apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, GetSelectedCondition(len(clustersStatus)))
+			} else if apimeta.FindStatusCondition(managedClustersUpgrade.Status.Conditions, TypeApplied) == nil && condition.Reason == ReasonSelected &&
+				condition.Status == metav1.ConditionTrue {
+				//klog.Info("add applied condtion from selected condition")
+				apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, GetAppliedCondition())
+			}
+		}
+		// Create Clusters status list
+		if apimeta.FindStatusCondition(managedClustersUpgrade.Status.Conditions, TypeSelected) == nil {
+			clustersStatus, err := r.initClustersList(r.Client, managedClustersUpgrade.Spec.GenericPlacementFields)
 			if err != nil {
 				klog.Error("Listing clusters: ", err)
 				return ctrl.Result{}, nil
 			}
 
 			managedClustersUpgrade.Status.Clusters = clustersStatus
-			apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, condition)
-			//klog.Info("ManagedClustersUpgrade", managedClustersUpgrade)
-			err = r.Status().Update(ctx, managedClustersUpgrade)
-			if err != nil {
-				klog.Error("Update managedClustersUpgrade.Status:", err)
-				return ctrl.Result{}, nil
-			}
-		} else {
-
-			//var conditions []metav1.Condition
-			for _, condition := range managedClustersUpgrade.Status.Conditions {
-				if condition.Type == TypeSelected && condition.Reason == ReasonNotSelected && condition.Status == metav1.ConditionFalse {
-					clustersStatus, err := r.initClustersList(r.Client, managedClustersUpgrade.Spec.GenericPlacementFields, &condition)
-					if err != nil {
-						klog.Error("Listing clusters: ", err)
-						return ctrl.Result{}, nil
-					}
-
-					managedClustersUpgrade.Status.Clusters = clustersStatus
-					klog.Info("condition", condition)
-					apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, condition)
-				}
-			}
-			//klog.Info("ManagedClustersUpgrade", managedClustersUpgrade)
-			err = r.Status().Update(ctx, managedClustersUpgrade)
-			if err != nil {
-				klog.Error("Update managedClustersUpgrade.Status:", err)
-				return ctrl.Result{}, nil
-			}
+			apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, GetSelectedCondition(len(clustersStatus)))
 		}
-
+		// Update changes
+		err = r.Status().Update(ctx, managedClustersUpgrade)
+		if err != nil {
+			klog.Error("Update managedClustersUpgrade.Status:", err)
+			return ctrl.Result{}, nil
+		}
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *ManagedClustersUpgradeReconciler) initClustersList(kubeClient client.Client, placement clusterv1beta1.GenericPlacementFields, condition *metav1.Condition) ([]clusterv1beta1.ClusterStatusSpec, error) {
+func (r *ManagedClustersUpgradeReconciler) initClustersList(kubeClient client.Client, placement clusterv1beta1.GenericPlacementFields) ([]clusterv1beta1.ClusterStatusSpec, error) {
 	Clusters, err := GetManagedClusterInfos(kubeClient, placement)
 	if err != nil {
 		return nil, err
@@ -118,9 +201,17 @@ func (r *ManagedClustersUpgradeReconciler) initClustersList(kubeClient client.Cl
 
 	var clustersStatus []clusterv1beta1.ClusterStatusSpec
 
-	for k, _ := range Clusters {
+	for k, cluster := range Clusters {
+		//klog.Info("clusterInfo version:", cluster.Status.DistributionInfo.OCP.Version)
+		//klog.Info("clusterInfo versionHistory:", cluster.Status.DistributionInfo.OCP.VersionHistory)
+		labels := cluster.GetLabels()
+		clusterId := ""
+		if len(labels) > 0 {
+			clusterId = labels["clusterID"]
+		}
 		clusterStatus := clusterv1beta1.ClusterStatusSpec{
-			Name: k,
+			Name:      k,
+			ClusterID: clusterId,
 			ClusterVersionStatus: clusterv1beta1.ClusterVersionStatus{
 				State: clusterv1beta1.NotStartedState,
 			},
@@ -128,18 +219,6 @@ func (r *ManagedClustersUpgradeReconciler) initClustersList(kubeClient client.Cl
 
 		clustersStatus = append(clustersStatus, clusterStatus)
 	}
-
-	if len(clustersStatus) == 0 {
-		condition.Status = metav1.ConditionFalse
-		condition.Reason = ReasonNotSelected
-	} else {
-		condition.Status = metav1.ConditionTrue
-		condition.Reason = ReasonSelected
-	}
-
-	condition.Message = fmt.Sprintf("Cluster Selector has match %d ManagedClusters.", len(clustersStatus))
-	condition.Type = TypeSelected
-	condition.LastTransitionTime = metav1.Now()
 
 	return clustersStatus, err
 }

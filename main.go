@@ -34,6 +34,7 @@ import (
 	clusterinfov1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/internal.open-cluster-management.io/v1beta1"
 	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
 	clustercontrollers "github.com/redhat-ztp/managedclusters-lifecycle-operator/controllers/cluster"
+	workv1 "open-cluster-management.io/api/work/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -47,6 +48,7 @@ func init() {
 
 	utilruntime.Must(clusterv1beta1.AddToScheme(scheme))
 	utilruntime.Must(clusterinfov1beta1.AddToScheme(scheme))
+	utilruntime.Must(workv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 

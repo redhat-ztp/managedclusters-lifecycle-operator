@@ -176,7 +176,7 @@ spec:
                   upgrade
                 properties:
                   approveAllUpgrades:
-                    default: true
+                    default: false
                     description: ApproveAllUpgrade is a boolean flag to approve all
                       the installed operators installPlan for the selected managed
                       clusters after cluster upgrade is done. When set to false only
@@ -311,21 +311,27 @@ spec:
                   description: ClusterStatus indicate the selected clusters upgrade
                     status
                   properties:
+                    canary:
+                      default: false
+                      description: canary indicate the cluster is from canary remediated
+                        clusters list
+                      type: boolean
+                    clusterID:
+                      description: ManagedCluster generated ID
+                      type: string
                     clusterVersionStatus:
                       description: ManagedCluster clusterVersion upgrade status
                       properties:
-                        canary:
-                          default: false
-                          description: canary indicate the cluster is from canary
-                            remediated clusters list
-                          type: boolean
                         state:
                           description: state reflects whether the update was fully
                             applied. The NotStart state indicates the update is not
-                            start yet. The Partial state indicates the update is not
-                            fully applied, while the Completed state indicates the
-                            update was successfully rolled out at least once (all
-                            parts of the update successfully applied).
+                            start yet. The Initialized state indicates the update
+                            has been initialized for the spoke. The Partial state
+                            indicates the update is not fully applied. The OperatorsUpgrade
+                            state indicates the operators install is being approved,
+                            while the Completed state indicates the update was successfully
+                            rolled out at least once (all parts of the update successfully
+                            applied).
                           type: string
                         verified:
                           default: false
@@ -345,6 +351,7 @@ spec:
                           type: boolean
                       type: object
                   required:
+                  - clusterID
                   - name
                   type: object
                 type: array

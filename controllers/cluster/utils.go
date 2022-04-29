@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	clusterinfov1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/internal.open-cluster-management.io/v1beta1"
 	managedClusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,16 +17,18 @@ const (
 	TypeFailed     = "Failed"
 	TypeInProgress = "InProgress"
 	TypeSelected   = "Selected"
-	TypeApplying   = "Applying"
+	TypeApplied    = "Applied"
 
-	ReasonNotSelected           = "ManagedClustersNotSelected"
-	ReasonSelected              = "ManagedClustersSelected"
-	ReasonUpgradeProgress       = "ManagedClustersUpgradeInProgress"
-	ReasonCanaryUpgradeProgress = "ManagedClustersCanaryUpgradeInProgress"
-	ReasonUpgradeFailed         = "ManagedClustersUpgradeFailed"
-	ReasonUpgradeCanaryFailed   = "ManagedClustersCanaryUpgradeFailed"
-	ReasonUpgradeComplete       = "ManagedClustersUpgradeComplete"
-	ReasonUpgradeCanaryComplete = "ManagedClustersCanaryUpgradeComplete"
+	ReasonApplied                   = "ManagedClustersUpgradeApplied"
+	ReasonNotSelected               = "ManagedClustersNotSelected"
+	ReasonSelected                  = "ManagedClustersSelected"
+	ReasonUpgradeInProgress         = "ManagedClustersUpgradeInProgress"
+	ReasonUpgradeOperatorInProgress = "ManagedClustersUpgradeOperatorsInProgress"
+	ReasonCanaryUpgradeInProgress   = "ManagedClustersCanaryUpgradeInProgress"
+	ReasonUpgradeFailed             = "ManagedClustersUpgradeFailed"
+	ReasonUpgradeCanaryFailed       = "ManagedClustersCanaryUpgradeFailed"
+	ReasonUpgradeComplete           = "ManagedClustersUpgradeComplete"
+	ReasonUpgradeCanaryComplete     = "ManagedClustersCanaryUpgradeComplete"
 )
 
 // ConvertLabels converts LabelSelectors to Selectors
@@ -40,6 +43,33 @@ func ConvertLabels(labelSelector *metav1.LabelSelector) (labels.Selector, error)
 	}
 
 	return labels.Everything(), nil
+}
+
+func GetInProgressCondition() metav1.Condition {
+	return getCondition(TypeInProgress, ReasonUpgradeInProgress, "ManagedClsuters upgrade InProgress", metav1.ConditionFalse)
+}
+
+func GetAppliedCondition() metav1.Condition {
+	return getCondition(TypeApplied, ReasonApplied, "ManagedClsuters upgrade ManifestWork applied", metav1.ConditionFalse)
+}
+
+func GetSelectedCondition(numClusters int) metav1.Condition {
+	if numClusters > 0 {
+		return getCondition(TypeSelected, ReasonSelected,
+			fmt.Sprintf("Cluster Selector has match %d ManagedClusters.", numClusters), metav1.ConditionTrue)
+	}
+	return getCondition(TypeSelected, ReasonNotSelected,
+		fmt.Sprintf("Cluster Selector has match %d ManagedClusters.", numClusters), metav1.ConditionFalse)
+}
+
+func getCondition(conditionType string, reason string, message string, status metav1.ConditionStatus) metav1.Condition {
+	return metav1.Condition{
+		Type:               conditionType,
+		Reason:             reason,
+		Message:            message,
+		Status:             status,
+		LastTransitionTime: metav1.Now(),
+	}
 }
 
 // Get ManagedClusterInfo based on the given label selector
