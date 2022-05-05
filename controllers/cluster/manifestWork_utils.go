@@ -1,18 +1,22 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
 	configv1 "github.com/openshift/api/config/v1"
 	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	workv1 "open-cluster-management.io/api/work/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 const (
-	ClusterUpgradeManifestName  = "clusterUpgrade-"
-	OperatorUpgradeManifestName = "operatorsUpgrade-"
+	ClusterUpgradeManifestName  = "-cluster-upgrade"
+	OperatorUpgradeManifestName = "-operators-upgrade"
 )
 
 func CreateOperatorUpgradeManifestWork(clusterName string, operatorConfig *clusterv1beta1.OcpOperatorsSpec) (*workv1.ManifestWork, error) {
@@ -24,31 +28,31 @@ func CreateOperatorUpgradeManifestWork(clusterName string, operatorConfig *clust
 		return nil, fmt.Errorf("Invalid operatorConfig")
 	}
 
-	if !operatorConfig.ApproveAllUpgrades && len(operatorConfig.Include) == 0 && len(operatorConfig.Exclude) == 0 {
-		return nil, nil
+	if !operatorConfig.ApproveAllUpgrades && len(operatorConfig.Include) == 0 {
+		return nil, fmt.Errorf("Invalid operatorConfig at least an operator should be selected to upgrade")
 	}
 
 	manifests := []workv1.Manifest{
 		workv1.Manifest{
-			RawExtension: runtime.RawExtension{Raw: []byte(NS)},
+			RawExtension: runtime.RawExtension{Raw: getJsonFromYaml(NS)},
 		},
-		//workv1.Manifest{
-		//	RawExtension: runtime.RawExtension{Raw: []byte(ClusterRole)},
-		//},
-		//workv1.Manifest{
-		//	RawExtension: runtime.RawExtension{Raw: []byte(ClusterRoleBinding)},
-		//},
-		//workv1.Manifest{
-		//	RawExtension: runtime.RawExtension{Raw: []byte(ServiceAccount)},
-		//},
-		//workv1.Manifest{
-		//	RawExtension: runtime.RawExtension{Raw: []byte(ApproverJob)},
-		//},
+		workv1.Manifest{
+			RawExtension: runtime.RawExtension{Raw: getJsonFromYaml(ClusterRole)},
+		},
+		workv1.Manifest{
+			RawExtension: runtime.RawExtension{Raw: getJsonFromYaml(ClusterRoleBinding)},
+		},
+		workv1.Manifest{
+			RawExtension: runtime.RawExtension{Raw: getJsonFromYaml(ServiceAccount)},
+		},
+		workv1.Manifest{
+			RawExtension: runtime.RawExtension{Raw: getJsonFromYaml(ApproverJob)},
+		},
 	}
 
 	manifestWork := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      OperatorUpgradeManifestName + clusterName,
+			Name:      clusterName + OperatorUpgradeManifestName,
 			Namespace: clusterName,
 		},
 		Spec: workv1.ManifestWorkSpec{
@@ -81,6 +85,10 @@ func CreateClusterVersionUpgradeManifestWork(clusterName string, clusterID strin
 	}
 
 	clusterVersion := &configv1.ClusterVersion{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "config.openshift.io/v1",
+			Kind:       "ClusterVersion",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "version",
 		},
@@ -105,8 +113,13 @@ func CreateClusterVersionUpgradeManifestWork(clusterName string, clusterID strin
 	}
 
 	roleBinding := &rbacv1.ClusterRoleBinding{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "rbac.authorization.k8s.io/v1",
+			Kind:       "ClusterRoleBinding",
+		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "admin-ocm",
+			Name:        "admin-ocm",
+			Annotations: map[string]string{"rbac.authorization.kubernetes.io/autoupdate": "true"},
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
@@ -137,7 +150,7 @@ func CreateClusterVersionUpgradeManifestWork(clusterName string, clusterID strin
 
 	manifestWork := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ClusterUpgradeManifestName + clusterName,
+			Name:      clusterName + ClusterUpgradeManifestName,
 			Namespace: clusterName,
 		},
 		Spec: workv1.ManifestWorkSpec{
@@ -153,6 +166,33 @@ func CreateClusterVersionUpgradeManifestWork(clusterName string, clusterID strin
 		},
 	}
 	return manifestWork, nil
+}
+
+func getJsonFromYaml(yamlStr string) []byte {
+	if json, err := yaml.YAMLToJSON([]byte(yamlStr)); err == nil {
+		return json
+	}
+	return nil
+}
+
+func getManifestWork(kubeclient client.Client, name string, ns string) (*workv1.ManifestWork, error) {
+	manifestWork := &workv1.ManifestWork{}
+	err := kubeclient.Get(context.TODO(), client.ObjectKey{
+		Name:      name,
+		Namespace: ns,
+	}, manifestWork)
+	if err != nil {
+		return nil, err
+	}
+	return manifestWork, nil
+}
+
+func isManifestWorkResourcesAvailable(kubeclient client.Client, name string, ns string) (bool, error) {
+	manifestwork, err := getManifestWork(kubeclient, name, ns)
+	if err != nil {
+		return false, err
+	}
+	return apimeta.IsStatusConditionTrue(manifestwork.Status.Conditions, workv1.WorkAvailable), nil
 }
 
 const NS = `
@@ -202,6 +242,7 @@ metadata:
   namespace: installplan-approver
 `
 const ApproverJob = `
+apiVersion: batch/v1
 kind: Job
 metadata:
   name: installplan-approver
@@ -241,7 +282,7 @@ spec:
                     oc get installplan $installplan -n $installplanNs -o jsonpath="{.spec.approved}"
                     if [ $(oc get installplan $installplan -n $installplanNs -o jsonpath="{.spec.approved}") == "false" ]; then
                       echo "Approving Subscription $subscription with install plan $installplan"
-                      oc patch installplan $installplan -n $installplanNs --type=json -p='[{"op":"replace","path": "/spec/approved", "value": true}]'
+                      oc patch installplan $installplan -n $installplanNs --type=json -p='[{"op":"replace","path": "/spec/approved", "value": false}]'
                     else
                       echo "Install Plan '$installplan' already approved"
                     fi

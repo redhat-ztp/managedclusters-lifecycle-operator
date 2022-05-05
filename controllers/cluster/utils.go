@@ -20,6 +20,7 @@ const (
 	TypeApplied    = "Applied"
 
 	ReasonApplied                   = "ManagedClustersUpgradeApplied"
+	ReasonOperatorsApplied          = "ManagedClustersOperatorsUpgradeApplied"
 	ReasonNotSelected               = "ManagedClustersNotSelected"
 	ReasonSelected                  = "ManagedClustersSelected"
 	ReasonUpgradeInProgress         = "ManagedClustersUpgradeInProgress"
@@ -72,8 +73,8 @@ func getCondition(conditionType string, reason string, message string, status me
 	}
 }
 
-// Get ManagedClusterInfo based on the given label selector
-func GetManagedClusterInfos(kubeclient client.Client, placement managedClusterv1beta1.GenericPlacementFields) (map[string]*clusterinfov1beta1.ManagedClusterInfo, error) {
+// Get ManagedClusterInfo list based on the given label selector
+func GetManagedClusterInfoList(kubeclient client.Client, placement managedClusterv1beta1.GenericPlacementFields) (map[string]*clusterinfov1beta1.ManagedClusterInfo, error) {
 	mClusterInfoMap := make(map[string]*clusterinfov1beta1.ManagedClusterInfo)
 
 	var labelSelector *metav1.LabelSelector
@@ -127,4 +128,26 @@ func GetManagedClusterInfos(kubeclient client.Client, placement managedClusterv1
 	}
 
 	return mClusterInfoMap, nil
+}
+
+func GetManagedClusterInfo(kubeclient client.Client, clusterName string) (*clusterinfov1beta1.ManagedClusterInfo, error) {
+	mClusterInfo := &clusterinfov1beta1.ManagedClusterInfo{}
+	err := kubeclient.Get(context.TODO(), client.ObjectKey{Name: clusterName, Namespace: clusterName}, mClusterInfo)
+	if err != nil {
+		return nil, err
+	}
+	return mClusterInfo, nil
+}
+
+func IsManagedClusterVersionComplete(kubeclient client.Client, clusterName string, version string) (bool, error) {
+	mClusterInfo, err := GetManagedClusterInfo(kubeclient, clusterName)
+	if err != nil {
+		return false, err
+	}
+	for _, versionHistory := range mClusterInfo.Status.DistributionInfo.OCP.VersionHistory {
+		if versionHistory.Version == version {
+			return versionHistory.State == "Complete", nil
+		}
+	}
+	return false, nil
 }

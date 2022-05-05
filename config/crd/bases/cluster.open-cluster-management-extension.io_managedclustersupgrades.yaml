@@ -313,14 +313,14 @@ spec:
                   properties:
                     canary:
                       default: false
-                      description: canary indicate the cluster is from canary remediated
-                        clusters list
+                      description: canary indicate the cluster is from canary clusters
+                        list
                       type: boolean
                     clusterID:
                       description: ManagedCluster generated ID
                       type: string
-                    clusterVersionStatus:
-                      description: ManagedCluster clusterVersion upgrade status
+                    clusterUpgradeStatus:
+                      description: ManagedCluster upgrade status
                       properties:
                         state:
                           description: state reflects whether the update was fully

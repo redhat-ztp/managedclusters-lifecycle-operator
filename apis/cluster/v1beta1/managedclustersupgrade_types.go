@@ -24,11 +24,10 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 const (
-	NotStartedState       = "NotStarted"
-	InitializedState      = "Initialized"
-	OperatorsUpgradeState = "OperatorsUpgrade"
-	PartialState          = "Partial"
-	CompleteState         = "Complete"
+	NotStartedState  = "NotStarted"
+	InitializedState = "Initialized"
+	PartialState     = "Partial"
+	CompleteState    = "Complete"
 )
 
 // Generic Operator Reference
@@ -126,14 +125,13 @@ type ManagedClustersUpgradeSpec struct {
 	ManagedClusterLabelAction *ManagedClusterLabelActionSpec `json:"managedClusterLabelAction,omitempty"`
 }
 
-// ClusterVersionStatus is a single attempted update to the cluster.
+// ClusterUpgradeStatus is a single attempted update to the cluster.
 // The original definition is from https://github.com/openshift/api/blob/master/config/v1/types_cluster_version.go
-type ClusterVersionStatus struct {
+type ClusterUpgradeStatus struct {
 	// state reflects whether the update was fully applied. The NotStart state
 	// indicates the update is not start yet. The Initialized state indicates the update
 	// has been initialized for the spoke. The Partial state indicates the update is not fully applied.
-	// The OperatorsUpgrade state indicates the operators install is being approved, while the Completed state
-	// indicates the update was successfully rolled out at least once (all parts of the update successfully applied).
+	// while the Completed state indicates the update was successfully rolled out at least once (all parts of the update successfully applied).
 	State string `json:"state,omitempty"`
 
 	// verified indicates whether the provided update was properly verified
@@ -144,8 +142,11 @@ type ClusterVersionStatus struct {
 
 // OperatorStatus indicate that operators installPlan approved
 type OperatorsStatus struct {
-	//+kubebuilder:default=false
-	UpgradeApproved bool `json:"upgradeApproved,omitempty"`
+	// UpgradeApproveState reflects whether the operator install plan approve fully applied. The NotStart state
+	// indicates the install plan approve not start yet. The Initialized state indicates the install plan approve
+	// has been initialized. The Partial state indicates the install plan approve is not fully applied
+	// while the Completed state indicates install plan approve is running
+	UpgradeApproveState string `json:"upgradeApproveState,omitempty"`
 }
 
 // ClusterStatus indicate the selected clusters upgrade status
@@ -154,11 +155,11 @@ type ClusterStatusSpec struct {
 	ClusterID string `json:"clusterID"`
 	// ManagedCluster Name
 	Name string `json:"name"`
-	// canary indicate the cluster is from canary remediated clusters list
+	// canary indicate the cluster is from canary clusters list
 	//+kubebuilder:default=false
 	Canary bool `json:"canary,omitempty"`
-	// ManagedCluster clusterVersion upgrade status
-	ClusterVersionStatus ClusterVersionStatus `json:"clusterVersionStatus,omitempty"`
+	// ManagedCluster upgrade status
+	ClusterUpgradeStatus ClusterUpgradeStatus `json:"clusterUpgradeStatus,omitempty"`
 	// ManagedCluster Operators Upgrade status
 	OperatorsStatus OperatorsStatus `json:"operatorsStatus,omitempty"`
 }
