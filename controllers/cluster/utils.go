@@ -3,12 +3,12 @@ package cluster
 import (
 	"context"
 	"fmt"
-	clusterinfov1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/internal.open-cluster-management.io/v1beta1"
 	managedClusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -46,6 +46,10 @@ func ConvertLabels(labelSelector *metav1.LabelSelector) (labels.Selector, error)
 	return labels.Everything(), nil
 }
 
+func GetCompleteCondition() metav1.Condition {
+	return getCondition(TypeComplete, ReasonUpgradeComplete, "ManagedClsuters upgrade Complete", metav1.ConditionFalse)
+}
+
 func GetInProgressCondition() metav1.Condition {
 	return getCondition(TypeInProgress, ReasonUpgradeInProgress, "ManagedClsuters upgrade InProgress", metav1.ConditionFalse)
 }
@@ -73,9 +77,9 @@ func getCondition(conditionType string, reason string, message string, status me
 	}
 }
 
-// Get ManagedClusterInfo list based on the given label selector
-func GetManagedClusterInfoList(kubeclient client.Client, placement managedClusterv1beta1.GenericPlacementFields) (map[string]*clusterinfov1beta1.ManagedClusterInfo, error) {
-	mClusterInfoMap := make(map[string]*clusterinfov1beta1.ManagedClusterInfo)
+// Get ManagedCluster list based on the given label selector
+func GetManagedClusterList(kubeclient client.Client, placement managedClusterv1beta1.GenericPlacementFields) (map[string]*clusterv1.ManagedCluster, error) {
+	mClusterMap := make(map[string]*clusterv1.ManagedCluster)
 
 	var labelSelector *metav1.LabelSelector
 
@@ -104,16 +108,16 @@ func GetManagedClusterInfoList(kubeclient client.Client, placement managedCluste
 
 	klog.V(1).Info("Using Cluster LabelSelector ", clSelector)
 
-	mClusterInfolist := &clusterinfov1beta1.ManagedClusterInfoList{}
+	mClusterlist := &clusterv1.ManagedClusterList{}
 
-	err = kubeclient.List(context.TODO(), mClusterInfolist, &client.ListOptions{LabelSelector: clSelector})
+	err = kubeclient.List(context.TODO(), mClusterlist, &client.ListOptions{LabelSelector: clSelector})
 
 	if err != nil && !errors.IsNotFound(err) {
 		//klog.Error("Listing clusters: ", err)
 		return nil, err
 	}
 
-	for _, mClusterInfo := range mClusterInfolist.Items {
+	for _, mClusterInfo := range mClusterlist.Items {
 		// the cluster will not be returned if it is in terminating process
 		if mClusterInfo.DeletionTimestamp != nil && !mClusterInfo.DeletionTimestamp.IsZero() {
 			continue
@@ -124,30 +128,30 @@ func GetManagedClusterInfoList(kubeclient client.Client, placement managedCluste
 		mClusterInfo.DeepCopy().SetAnnotations(nil)
 		mClusterInfo.DeepCopy().SetFinalizers(nil)
 
-		mClusterInfoMap[mClusterInfo.Name] = mClusterInfo.DeepCopy()
+		mClusterMap[mClusterInfo.Name] = mClusterInfo.DeepCopy()
 	}
 
-	return mClusterInfoMap, nil
+	return mClusterMap, nil
 }
 
-func GetManagedClusterInfo(kubeclient client.Client, clusterName string) (*clusterinfov1beta1.ManagedClusterInfo, error) {
-	mClusterInfo := &clusterinfov1beta1.ManagedClusterInfo{}
-	err := kubeclient.Get(context.TODO(), client.ObjectKey{Name: clusterName, Namespace: clusterName}, mClusterInfo)
-	if err != nil {
-		return nil, err
-	}
-	return mClusterInfo, nil
-}
+//func GetManagedClusterInfo(kubeclient client.Client, clusterName string) (*clusterinfov1beta1.ManagedClusterInfo, error) {
+//	mClusterInfo := &clusterinfov1beta1.ManagedClusterInfo{}
+//	err := kubeclient.Get(context.TODO(), client.ObjectKey{Name: clusterName, Namespace: clusterName}, mClusterInfo)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return mClusterInfo, nil
+//}
 
-func IsManagedClusterVersionComplete(kubeclient client.Client, clusterName string, version string) (bool, error) {
-	mClusterInfo, err := GetManagedClusterInfo(kubeclient, clusterName)
-	if err != nil {
-		return false, err
-	}
-	for _, versionHistory := range mClusterInfo.Status.DistributionInfo.OCP.VersionHistory {
-		if versionHistory.Version == version {
-			return versionHistory.State == "Complete", nil
-		}
-	}
-	return false, nil
-}
+//func IsManagedClusterVersionComplete(kubeclient client.Client, clusterName string, version string) (bool, error) {
+//	mClusterInfo, err := GetManagedClusterInfo(kubeclient, clusterName)
+//	if err != nil {
+//		return false, err
+//	}
+//	for _, versionHistory := range mClusterInfo.Status.DistributionInfo.OCP.VersionHistory {
+//		if versionHistory.Version == version {
+//			return versionHistory.State == managedClusterv1beta1.CompleteState, nil
+//		}
+//	}
+//	return false, nil
+//}

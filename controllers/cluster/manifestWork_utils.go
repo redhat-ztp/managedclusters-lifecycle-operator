@@ -15,8 +15,12 @@ import (
 )
 
 const (
-	ClusterUpgradeManifestName  = "-cluster-upgrade"
-	OperatorUpgradeManifestName = "-operators-upgrade"
+	ClusterUpgradeManifestName     = "-cluster-upgrade"
+	OperatorUpgradeManifestName    = "-operators-upgrade"
+	OperatorUpgradeSucceededState  = "succeeded"
+	OperatorUpgradeActiveState     = "active"
+	OperatorUpgradeFailedState     = "failed"
+	OperatorUpgradeValidStateValue = 1
 )
 
 func CreateOperatorUpgradeManifestWork(clusterName string, operatorConfig *clusterv1beta1.OcpOperatorsSpec) (*workv1.ManifestWork, error) {
@@ -50,6 +54,35 @@ func CreateOperatorUpgradeManifestWork(clusterName string, operatorConfig *clust
 		},
 	}
 
+	// Create manifest Config option to watch cluster version upgrade status
+	manifestConfigOpt := workv1.ManifestConfigOption{
+		ResourceIdentifier: workv1.ResourceIdentifier{
+			Group:     "batch",
+			Name:      "installplan-approver",
+			Namespace: "installplan-approver",
+			Resource:  "jobs",
+		},
+		FeedbackRules: []workv1.FeedbackRule{
+			workv1.FeedbackRule{
+				Type: workv1.FeedBackType("JSONPaths"),
+				JsonPaths: []workv1.JsonPath{
+					workv1.JsonPath{
+						Name: OperatorUpgradeSucceededState,
+						Path: ".status." + OperatorUpgradeSucceededState,
+					},
+					workv1.JsonPath{
+						Name: OperatorUpgradeActiveState,
+						Path: ".status." + OperatorUpgradeActiveState,
+					},
+					workv1.JsonPath{
+						Name: OperatorUpgradeFailedState,
+						Path: ".status." + OperatorUpgradeFailedState,
+					},
+				},
+			},
+		},
+	}
+
 	manifestWork := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterName + OperatorUpgradeManifestName,
@@ -62,6 +95,7 @@ func CreateOperatorUpgradeManifestWork(clusterName string, operatorConfig *clust
 			Workload: workv1.ManifestsTemplate{
 				Manifests: manifests,
 			},
+			ManifestConfigs: []workv1.ManifestConfigOption{manifestConfigOpt},
 		},
 	}
 	return manifestWork, nil
@@ -148,6 +182,34 @@ func CreateClusterVersionUpgradeManifestWork(clusterName string, clusterID strin
 	}
 	orphaningRules := []workv1.OrphaningRule{rule}
 
+	// Create manifest Config option to watch cluster version upgrade status
+	manifestConfigOpt := workv1.ManifestConfigOption{
+		ResourceIdentifier: workv1.ResourceIdentifier{
+			Group:    "config.openshift.io",
+			Name:     "version",
+			Resource: "clusterversions",
+		},
+		FeedbackRules: []workv1.FeedbackRule{
+			workv1.FeedbackRule{
+				Type: workv1.FeedBackType("JSONPaths"),
+				JsonPaths: []workv1.JsonPath{
+					workv1.JsonPath{
+						Name: "version",
+						Path: ".status.history[0].version",
+					},
+					workv1.JsonPath{
+						Name: "state",
+						Path: ".status.history[0].state",
+					},
+					workv1.JsonPath{
+						Name: "verified",
+						Path: ".status.history[0].verified",
+					},
+				},
+			},
+		},
+	}
+
 	manifestWork := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterName + ClusterUpgradeManifestName,
@@ -163,6 +225,7 @@ func CreateClusterVersionUpgradeManifestWork(clusterName string, clusterID strin
 			Workload: workv1.ManifestsTemplate{
 				Manifests: manifests,
 			},
+			ManifestConfigs: []workv1.ManifestConfigOption{manifestConfigOpt},
 		},
 	}
 	return manifestWork, nil
@@ -193,6 +256,23 @@ func isManifestWorkResourcesAvailable(kubeclient client.Client, name string, ns 
 		return false, err
 	}
 	return apimeta.IsStatusConditionTrue(manifestwork.Status.Conditions, workv1.WorkAvailable), nil
+}
+
+// Get the Operator Upgrade Job status (name, value); active, succeeded or failed
+func getOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns string) (string, int, error) {
+	manifestwork, err := getManifestWork(kubeclient, name, ns)
+	if err != nil {
+		return "", 0, err
+	}
+	for _, manifest := range manifestwork.Status.ResourceStatus.Manifests {
+		if manifest.ResourceMeta.Kind == "Job" {
+			if len(manifest.StatusFeedbacks.Values) < 1 {
+				return "", 0, fmt.Errorf("Operator Upgrade job status not found %s", name)
+			}
+			return manifest.StatusFeedbacks.Values[0].Name, int(*manifest.StatusFeedbacks.Values[0].Value.Integer), nil
+		}
+	}
+	return "", 0, fmt.Errorf("Operator Upgrade job not found %s", name)
 }
 
 const NS = `
@@ -249,6 +329,7 @@ metadata:
   namespace: installplan-approver
 spec:
   manualSelector: true
+  activeDeadlineSeconds: 630
   selector:
     matchLabels:
       job-name: installplan-approver
@@ -291,7 +372,7 @@ spec:
           env:
             -
               name: WAITTIME
-              value: "600"
+              value: "120"
           image: registry.redhat.io/openshift4/ose-cli:latest
           imagePullPolicy: IfNotPresent
           name: installplan-approver

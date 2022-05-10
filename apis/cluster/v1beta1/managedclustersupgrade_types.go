@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	configv1 "github.com/openshift/api/config/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,8 +27,9 @@ import (
 const (
 	NotStartedState  = "NotStarted"
 	InitializedState = "Initialized"
-	PartialState     = "Partial"
-	CompleteState    = "Complete"
+	PartialState     = string(configv1.PartialUpdate)
+	CompleteState    = string(configv1.CompletedUpdate)
+	FailedState      = "Failed"
 )
 
 // Generic Operator Reference
@@ -85,9 +87,8 @@ type ManagedClusterLabelActionSpec struct {
 type ClusterVersionSpec struct {
 	// version for cluster upgrade
 	Version string `json:"version"`
-	// +optional
 	// channel name for cluster upgrade
-	Channel string `json:"channel,omitempty"`
+	Channel string `json:"channel"`
 	// +optional
 	// upstream url for cluster upgrade
 	Upstream string `json:"upstream,omitempty"`

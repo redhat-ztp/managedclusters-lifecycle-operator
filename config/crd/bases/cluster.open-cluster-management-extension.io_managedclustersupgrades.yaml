@@ -100,6 +100,7 @@ spec:
                     description: version for cluster upgrade
                     type: string
                 required:
+                - channel
                 - version
                 type: object
               clusters:
@@ -327,11 +328,9 @@ spec:
                             applied. The NotStart state indicates the update is not
                             start yet. The Initialized state indicates the update
                             has been initialized for the spoke. The Partial state
-                            indicates the update is not fully applied. The OperatorsUpgrade
-                            state indicates the operators install is being approved,
-                            while the Completed state indicates the update was successfully
-                            rolled out at least once (all parts of the update successfully
-                            applied).
+                            indicates the update is not fully applied. while the Completed
+                            state indicates the update was successfully rolled out
+                            at least once (all parts of the update successfully applied).
                           type: string
                         verified:
                           default: false
@@ -346,9 +345,15 @@ spec:
                     operatorsStatus:
                       description: ManagedCluster Operators Upgrade status
                       properties:
-                        upgradeApproved:
-                          default: false
-                          type: boolean
+                        upgradeApproveState:
+                          description: UpgradeApproveState reflects whether the operator
+                            install plan approve fully applied. The NotStart state
+                            indicates the install plan approve not start yet. The
+                            Initialized state indicates the install plan approve has
+                            been initialized. The Partial state indicates the install
+                            plan approve is not fully applied while the Completed
+                            state indicates install plan approve is running
+                          type: string
                       type: object
                   required:
                   - clusterID
