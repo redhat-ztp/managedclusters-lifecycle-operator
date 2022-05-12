@@ -258,6 +258,17 @@ func isManifestWorkResourcesAvailable(kubeclient client.Client, name string, ns 
 	return apimeta.IsStatusConditionTrue(manifestwork.Status.Conditions, workv1.WorkAvailable), nil
 }
 
+func deleteManifestWork(kubeclient client.Client, name string, ns string) error {
+	manifestWork := &workv1.ManifestWork{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+	}
+
+	return kubeclient.Delete(context.TODO(), manifestWork)
+}
+
 // Get the Operator Upgrade Job status (name, value); active, succeeded or failed
 func getOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns string) (string, int, error) {
 	manifestwork, err := getManifestWork(kubeclient, name, ns)
@@ -273,6 +284,31 @@ func getOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns 
 		}
 	}
 	return "", 0, fmt.Errorf("Operator Upgrade job not found %s", name)
+}
+
+// Get the clusterVersion Upgrade  status (value); state, version, verified
+func getClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns string) (string, string, bool, error) {
+	version, state := "", ""
+	verified := false
+	manifestwork, err := getManifestWork(kubeclient, name, ns)
+	if err != nil {
+		return version, state, verified, err
+	}
+
+	for _, manifest := range manifestwork.Status.ResourceStatus.Manifests {
+		if manifest.ResourceMeta.Kind == "ClusterVersion" {
+			for _, v := range manifest.StatusFeedbacks.Values {
+				if v.Name == "version" {
+					version = string(*v.Value.String)
+				} else if v.Name == "state" {
+					state = string(*v.Value.String)
+				} else if v.Name == "verified" {
+					verified = bool(*v.Value.Boolean)
+				}
+			}
+		}
+	}
+	return version, state, verified, err
 }
 
 const NS = `

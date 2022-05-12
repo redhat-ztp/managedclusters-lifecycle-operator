@@ -55,16 +55,17 @@ func GetInProgressCondition() metav1.Condition {
 }
 
 func GetAppliedCondition() metav1.Condition {
-	return getCondition(TypeApplied, ReasonApplied, "ManagedClsuters upgrade ManifestWork applied", metav1.ConditionFalse)
+	return getCondition(TypeApplied, ReasonApplied, "ManagedClsuters upgrade applied", metav1.ConditionFalse)
 }
 
 func GetSelectedCondition(numClusters int) metav1.Condition {
+	message := "ManagedClsuters upgrade select %d clusters"
 	if numClusters > 0 {
 		return getCondition(TypeSelected, ReasonSelected,
-			fmt.Sprintf("Cluster Selector has match %d ManagedClusters.", numClusters), metav1.ConditionTrue)
+			fmt.Sprintf(message, numClusters), metav1.ConditionTrue)
 	}
 	return getCondition(TypeSelected, ReasonNotSelected,
-		fmt.Sprintf("Cluster Selector has match %d ManagedClusters.", numClusters), metav1.ConditionFalse)
+		fmt.Sprintf(message, numClusters), metav1.ConditionFalse)
 }
 
 func getCondition(conditionType string, reason string, message string, status metav1.ConditionStatus) metav1.Condition {

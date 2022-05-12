@@ -57,15 +57,16 @@ type ManagedClustersUpgradeReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	managedClustersUpgrade := &clusterv1beta1.ManagedClustersUpgrade{}
+	result := ctrl.Result{RequeueAfter: 30 * time.Second}
 	err := r.Get(ctx, req.NamespacedName, managedClustersUpgrade)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.Info("ManagedClustersUpgrade resource not found. Ignoring since object must be deleted")
-			return ctrl.Result{}, nil
+			return result, nil
 		}
 		klog.Error(err, "Failed to get ManagedClustersUpgrade")
-		return ctrl.Result{}, err
+		return result, err
 	} else {
 		klog.Info(managedClustersUpgrade.Name)
 
@@ -77,7 +78,7 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 				clustersStatus, err := r.initClustersList(r.Client, managedClustersUpgrade.Spec.GenericPlacementFields)
 				if err != nil {
 					klog.Error("Listing clusters: ", err)
-					return ctrl.Result{}, nil
+					return result, nil
 				}
 
 				managedClustersUpgrade.Status.Clusters = clustersStatus
@@ -91,7 +92,7 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 			clustersStatus, err := r.initClustersList(r.Client, managedClustersUpgrade.Spec.GenericPlacementFields)
 			if err != nil {
 				klog.Error("Listing clusters: ", err)
-				return ctrl.Result{}, nil
+				return result, nil
 			}
 
 			managedClustersUpgrade.Status.Clusters = clustersStatus
@@ -100,11 +101,11 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 
 		// Condition TypeApplied
 		if condition := apimeta.FindStatusCondition(managedClustersUpgrade.Status.Conditions, TypeApplied); condition != nil {
-			klog.Info("type applied")
 			if condition.Status == metav1.ConditionFalse {
+				klog.Info("type applied condition false")
 				manifestCreated := false
 				for id, cluster := range managedClustersUpgrade.Status.Clusters {
-					// Create ocp upgrade first
+					// Create cluster upgrade first
 					manifestWork, err := CreateClusterVersionUpgradeManifestWork(cluster.Name, cluster.ClusterID, managedClustersUpgrade.Spec.ClusterVersion)
 					if err != nil {
 						klog.Info("ClusterVersion ManifestWork not initaliz: "+cluster.Name+" ", err)
@@ -140,13 +141,27 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 					condition.Status = metav1.ConditionTrue
 				}
 			} else if condition.Status == metav1.ConditionTrue && condition.Reason == ReasonApplied {
+				klog.Info("type applied condition true")
 				// Check for cluster upgrade if done then apply operators upgrade if exist
-				if managedClustersUpgrade.Spec.OcpOperators.ApproveAllUpgrades || len(managedClustersUpgrade.Spec.OcpOperators.Include) > 0 {
-					for _, cluster := range managedClustersUpgrade.Status.Clusters {
+
+				if managedClustersUpgrade.Spec.OcpOperators != nil && (managedClustersUpgrade.Spec.OcpOperators.ApproveAllUpgrades ||
+					len(managedClustersUpgrade.Spec.OcpOperators.Include) > 0) {
+					for id, cluster := range managedClustersUpgrade.Status.Clusters {
 						// check for ocp upgrade complete and operators upgrade not start
 						if cluster.ClusterUpgradeStatus.State == clusterv1beta1.CompleteState &&
 							cluster.OperatorsStatus.UpgradeApproveState == clusterv1beta1.NotStartedState {
-
+							manifestWork, err := CreateOperatorUpgradeManifestWork(cluster.Name, managedClustersUpgrade.Spec.OcpOperators)
+							if err != nil {
+								klog.Info("OCP Operators ManifestWork not initaliz: "+cluster.Name+" ", err)
+							} else {
+								klog.Info("Create ManifestWork ", manifestWork.Name)
+								err = r.Client.Create(ctx, manifestWork)
+								if err != nil {
+									klog.Error("Error create ManifestWork: ", manifestWork.Name, " ", err)
+								} else {
+									managedClustersUpgrade.Status.Clusters[id].OperatorsStatus.UpgradeApproveState = clusterv1beta1.InitializedState
+								}
+							}
 						}
 					}
 				}
@@ -209,9 +224,23 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 					} else if cluster.ClusterUpgradeStatus.State == clusterv1beta1.PartialState {
 						// check for managedCluster state to set
 						klog.Info("I'm in ocp upgrade partial state")
+						version, state, verified, err := getClusterUpgradeManifestStatus(r.Client, cluster.Name+ClusterUpgradeManifestName, cluster.Name)
+						if err != nil {
+							klog.Error("Get ClusterUpgradeManifestStatus ", err)
+							continue
+						}
+						klog.Info("ClusterUpgradeManifestStatus ", version+" ", state+" ", verified)
+						// validate same version as expected from status
+						if version == managedClustersUpgrade.Spec.ClusterVersion.Version {
+							managedClustersUpgrade.Status.Clusters[id].ClusterUpgradeStatus.State = state
+							managedClustersUpgrade.Status.Clusters[id].ClusterUpgradeStatus.Verified = verified
+						}
+
 					} else if cluster.ClusterUpgradeStatus.State == clusterv1beta1.CompleteState {
 						// check if there is operator upgrade defined otherwise increase count
-						if !managedClustersUpgrade.Spec.OcpOperators.ApproveAllUpgrades &&
+						if managedClustersUpgrade.Spec.OcpOperators == nil {
+							countComplete++
+						} else if !managedClustersUpgrade.Spec.OcpOperators.ApproveAllUpgrades &&
 							len(managedClustersUpgrade.Spec.OcpOperators.Include) == 0 {
 							countComplete++
 						}
@@ -247,6 +276,7 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 					}
 				}
 				if countComplete == len(managedClustersUpgrade.Status.Clusters) {
+					klog.Info("upgrade finish set inprogress false")
 					condition.Status = metav1.ConditionFalse
 					condition.Reason = ReasonUpgradeComplete
 				}
@@ -266,18 +296,36 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 				allClusterUpgradeComplete, allOperatorUpgradeComplete := true, true
 				for _, cluster := range managedClustersUpgrade.Status.Clusters {
 					if cluster.ClusterUpgradeStatus.State == clusterv1beta1.CompleteState {
-						// Delete cluster upgrade manifest work
+						// Delete cluster operator upgrade manifest work
+						manifestName := cluster.Name + ClusterUpgradeManifestName
+						klog.Info("upgrade complete Delete manfiestwork ", manifestName)
+						err = deleteManifestWork(r.Client, manifestName, cluster.Name)
+						if err != nil {
+							klog.Error("Delete manifestwork ", manifestName+" ", err)
+						}
 					} else if cluster.ClusterUpgradeStatus.State == clusterv1beta1.NotStartedState {
 						// check if there is cluster version upgrade defined
+						if managedClustersUpgrade.Spec.ClusterVersion != nil {
+							allClusterUpgradeComplete = false
+						}
 					} else {
 						allClusterUpgradeComplete = false
 					}
 
 					if cluster.OperatorsStatus.UpgradeApproveState == clusterv1beta1.CompleteState {
 						// Delete cluster operator upgrade manifest work
+						manifestName := cluster.Name + OperatorUpgradeManifestName
+						klog.Info("upgrade complete Delete manfiestwork ", manifestName)
+						err = deleteManifestWork(r.Client, manifestName, cluster.Name)
+						if err != nil {
+							klog.Error("Delete manifestwork ", manifestName+" ", err)
+						}
 
 					} else if cluster.OperatorsStatus.UpgradeApproveState == clusterv1beta1.NotStartedState {
 						// check if there is cluster operator upgrade defined
+						if managedClustersUpgrade.Spec.OcpOperators != nil {
+							allOperatorUpgradeComplete = false
+						}
 					} else {
 						allOperatorUpgradeComplete = false
 					}
@@ -286,14 +334,8 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 					condition.Status = metav1.ConditionTrue
 				}
 			} else if condition.Status == metav1.ConditionTrue {
-				klog.Info("type complete true")
-				// Update changes
-				err = r.Status().Update(ctx, managedClustersUpgrade)
-				if err != nil {
-					klog.Error("Update managedClustersUpgrade.Status:", err)
-					return ctrl.Result{}, nil
-				}
-				return ctrl.Result{}, nil
+				klog.Info("type complete is done no more reconsle for this CR " + managedClustersUpgrade.Name)
+				result = ctrl.Result{}
 			}
 
 		} else {
@@ -304,14 +346,15 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 		}
 
 		// Update changes
+		klog.Info("update status")
 		err = r.Status().Update(ctx, managedClustersUpgrade)
 		if err != nil {
 			klog.Error("Update managedClustersUpgrade.Status:", err)
-			return ctrl.Result{}, nil
+			return result, nil
 		}
 	}
 
-	return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	return result, nil
 }
 
 func (r *ManagedClustersUpgradeReconciler) initClustersList(kubeClient client.Client, placement clusterv1beta1.GenericPlacementFields) ([]clusterv1beta1.ClusterStatusSpec, error) {

@@ -220,8 +220,8 @@ spec:
                 required:
                 - approveAllUpgrades
                 type: object
-              remediationStrategy:
-                description: RemediationStrategy defines the remediation Strategy
+              upgradeStrategy:
+                description: UpgradeStrategy defines the upgrades Strategy
                 properties:
                   CanaryClusters:
                     description: CanaryClusters defines the list of managedClusters
@@ -289,13 +289,17 @@ spec:
                           type: object
                         type: array
                     type: object
+                  clusterUpgradeTimeout:
+                    default: 180
+                    description: TimeOut for cluster upgrade process in min
+                    type: integer
                   maxConcurrency:
                     description: Max number of clusters to perform upgrade at the
                       same time
                     type: integer
-                  timeout:
-                    default: 240
-                    description: TimeOut for cluster upgrade process
+                  operatorsUpgradeTimeout:
+                    default: 20
+                    description: TimeOut for cluster upgrade process in min
                     type: integer
                 required:
                 - maxConcurrency

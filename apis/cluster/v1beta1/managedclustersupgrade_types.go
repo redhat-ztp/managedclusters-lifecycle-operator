@@ -53,16 +53,19 @@ type GenericPlacementFields struct {
 	ClusterSelector *metav1.LabelSelector     `json:"clusterSelector,omitempty"`
 }
 
-// RemediationStrategy defines the remediation Strategy
-type RemediationStrategySpec struct {
+// UpgradeStrategy defines the upgrades Strategy
+type UpgradeStrategySpec struct {
 	// CanaryClusters defines the list of managedClusters that should be remediated first
 	CanaryClusters GenericPlacementFields `json:"CanaryClusters,omitempty"`
 	//kubebuilder:validation:Minimum=1
 	// Max number of clusters to perform upgrade at the same time
 	MaxConcurrency int `json:"maxConcurrency"`
-	//+kubebuilder:default=240
-	// TimeOut for cluster upgrade process
-	Timeout int `json:"timeout,omitempty"`
+	//+kubebuilder:default=180
+	// TimeOut for cluster upgrade process in min
+	ClusterUpgradeTimeout int `json:"clusterUpgradeTimeout,omitempty"`
+	//+kubebuilder:default=20
+	// TimeOut for cluster upgrade process in min
+	OperatorsUpgradeTimeout int `json:"operatorsUpgradeTimeout,omitempty"`
 }
 
 // Label Action define the desire action for labeling the selected managed clusters
@@ -117,7 +120,7 @@ type ManagedClustersUpgradeSpec struct {
 
 	GenericPlacementFields `json:",inline"`
 
-	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
+	UpgradeStrategy *UpgradeStrategySpec `json:"upgradeStrategy,omitempty"`
 	// +optional
 	ClusterVersion *ClusterVersionSpec `json:"clusterVersion,omitempty"`
 	// +optional
