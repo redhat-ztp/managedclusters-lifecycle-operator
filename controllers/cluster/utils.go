@@ -46,6 +46,15 @@ func ConvertLabels(labelSelector *metav1.LabelSelector) (labels.Selector, error)
 	return labels.Everything(), nil
 }
 
+func GetFailedCondition(failedCount int, failedNames string) metav1.Condition {
+	return getCondition(TypeFailed, ReasonUpgradeFailed, GetFailedConditionMessage(failedCount, failedNames),
+		metav1.ConditionTrue)
+}
+
+func GetFailedConditionMessage(failedCount int, failedNames string) string {
+	return fmt.Sprintf("ManagedClsuters upgrade failed \ncount: %d \nclusters: %s", failedCount, failedNames)
+}
+
 func GetCompleteCondition() metav1.Condition {
 	return getCondition(TypeComplete, ReasonUpgradeComplete, "ManagedClsuters upgrade Complete", metav1.ConditionFalse)
 }

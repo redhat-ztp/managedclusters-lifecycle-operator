@@ -5,6 +5,8 @@ import (
 	"fmt"
 	configv1 "github.com/openshift/api/config/v1"
 	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,6 +14,7 @@ import (
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
+	"time"
 )
 
 const (
@@ -21,9 +24,10 @@ const (
 	OperatorUpgradeActiveState     = "active"
 	OperatorUpgradeFailedState     = "failed"
 	OperatorUpgradeValidStateValue = 1
+	OseCliDefaultImage             = "registry.redhat.io/openshift4/ose-cli:latest"
 )
 
-func CreateOperatorUpgradeManifestWork(clusterName string, operatorConfig *clusterv1beta1.OcpOperatorsSpec) (*workv1.ManifestWork, error) {
+func CreateOperatorUpgradeManifestWork(clusterName string, operatorConfig *clusterv1beta1.OcpOperatorsSpec, timeout string, image string) (*workv1.ManifestWork, error) {
 	if clusterName == "" {
 		return nil, fmt.Errorf("Invalid clusterName")
 	}
@@ -34,6 +38,11 @@ func CreateOperatorUpgradeManifestWork(clusterName string, operatorConfig *clust
 
 	if !operatorConfig.ApproveAllUpgrades && len(operatorConfig.Include) == 0 {
 		return nil, fmt.Errorf("Invalid operatorConfig at least an operator should be selected to upgrade")
+	}
+
+	job, err := getInstallPlanApproverJob(operatorConfig.Include, operatorConfig.Exclude, timeout, image)
+	if err != nil {
+		return nil, err
 	}
 
 	manifests := []workv1.Manifest{
@@ -50,7 +59,7 @@ func CreateOperatorUpgradeManifestWork(clusterName string, operatorConfig *clust
 			RawExtension: runtime.RawExtension{Raw: getJsonFromYaml(ServiceAccount)},
 		},
 		workv1.Manifest{
-			RawExtension: runtime.RawExtension{Raw: getJsonFromYaml(ApproverJob)},
+			RawExtension: runtime.RawExtension{Object: job},
 		},
 	}
 
@@ -255,35 +264,8 @@ func isManifestWorkResourcesAvailable(kubeclient client.Client, name string, ns 
 	if err != nil {
 		return false, err
 	}
+
 	return apimeta.IsStatusConditionTrue(manifestwork.Status.Conditions, workv1.WorkAvailable), nil
-}
-
-func deleteManifestWork(kubeclient client.Client, name string, ns string) error {
-	manifestWork := &workv1.ManifestWork{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-		},
-	}
-
-	return kubeclient.Delete(context.TODO(), manifestWork)
-}
-
-// Get the Operator Upgrade Job status (name, value); active, succeeded or failed
-func getOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns string) (string, int, error) {
-	manifestwork, err := getManifestWork(kubeclient, name, ns)
-	if err != nil {
-		return "", 0, err
-	}
-	for _, manifest := range manifestwork.Status.ResourceStatus.Manifests {
-		if manifest.ResourceMeta.Kind == "Job" {
-			if len(manifest.StatusFeedbacks.Values) < 1 {
-				return "", 0, fmt.Errorf("Operator Upgrade job status not found %s", name)
-			}
-			return manifest.StatusFeedbacks.Values[0].Name, int(*manifest.StatusFeedbacks.Values[0].Value.Integer), nil
-		}
-	}
-	return "", 0, fmt.Errorf("Operator Upgrade job not found %s", name)
 }
 
 // Get the clusterVersion Upgrade  status (value); state, version, verified
@@ -311,6 +293,150 @@ func getClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns s
 	return version, state, verified, err
 }
 
+// Get the Operator Upgrade Job status (name, value); active, succeeded or failed
+func getOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns string) (string, int, error) {
+	manifestwork, err := getManifestWork(kubeclient, name, ns)
+	if err != nil {
+		return "", 0, err
+	}
+	for _, manifest := range manifestwork.Status.ResourceStatus.Manifests {
+		if manifest.ResourceMeta.Kind == "Job" {
+			if len(manifest.StatusFeedbacks.Values) < 1 {
+				return "", 0, fmt.Errorf("Operator Upgrade job status not found %s", name)
+			}
+			return manifest.StatusFeedbacks.Values[0].Name, int(*manifest.StatusFeedbacks.Values[0].Value.Integer), nil
+		}
+	}
+	return "", 0, fmt.Errorf("Operator Upgrade job not found %s", name)
+}
+
+func deleteManifestWork(kubeclient client.Client, name string, ns string) error {
+	manifestWork := &workv1.ManifestWork{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+	}
+
+	return kubeclient.Delete(context.TODO(), manifestWork)
+}
+
+func getInstallPlanApproverJob(includeOperator []clusterv1beta1.GenericOperatorReference, excludeOperators []clusterv1beta1.GenericOperatorReference, upgradeTimeout string, oseCliImage string) (*batchv1.Job, error) {
+	jobTimeOut, err := time.ParseDuration(upgradeTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid Operators upgrade timeout %s", upgradeTimeout)
+	}
+
+	sec := int64(jobTimeOut.Seconds())
+	// Adding 90sec to the timeout to terminate the job if it didn't reach succeeded state
+	deadLine := sec + 90
+	includeOperatorStr, excludeOperatorsStr := "", ""
+	manualSelect := true
+
+	for _, ref := range includeOperator {
+		includeOperatorStr = ref.Name + "," + ref.Namespace
+	}
+
+	for _, ref := range excludeOperators {
+		excludeOperatorsStr = ref.Name + "," + ref.Namespace
+	}
+
+	job := &batchv1.Job{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "batch/v1",
+			Kind:       "Job",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "installplan-approver",
+			Namespace: "installplan-approver",
+		},
+		Spec: batchv1.JobSpec{
+			ManualSelector:        &manualSelect,
+			ActiveDeadlineSeconds: &deadLine,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"job-name": "installplan-approver"},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"job-name": "installplan-approver"},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:            "installplan-approver",
+							Image:           oseCliImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "EXCLUDELIST",
+									Value: excludeOperatorsStr,
+								},
+								{
+									Name:  "INCLUDELIST",
+									Value: includeOperatorStr,
+								},
+								{
+									Name:  "WAITTIME",
+									Value: fmt.Sprintf("%d", sec),
+								},
+							},
+							Command: []string{"/bin/bash", "-c", JobScript},
+						},
+					},
+					DNSPolicy:          corev1.DNSClusterFirst,
+					RestartPolicy:      corev1.RestartPolicyOnFailure,
+					ServiceAccountName: "installplan-approver",
+				},
+			},
+		},
+	}
+	return job, nil
+}
+
+const JobScript = `
+echo "Continue approving operator installPlan for ${WAITTIME}sec ."
+end=$((SECONDS+$WAITTIME))
+while [ $SECONDS -lt $end ]; do
+  echo "continue for " $SECONDS " - " $end
+  oc get subscriptions.operators.coreos.com -A
+  for subscription in $(oc get subscriptions.operators.coreos.com -A -o jsonpath='{range .items[*]}{.metadata.name}{","}{.metadata.namespace}{"\n"}')
+  do
+    if [ $subscription == "," ]; then
+      continue
+    fi
+
+    if [[ $INCLUDELIST != "" ]]; then
+      if [[ $INCLUDELIST != *$subscription* ]]; then
+        continue
+      else
+        echo "Subscription $subscription Included"
+      fi
+    fi
+
+    if [[ $EXCLUDELIST != "" ]]; then
+      if [[ $EXCLUDELIST == *$subscription* ]]; then
+        echo "Subscription $subscription Excluded"
+        continue
+      fi
+    fi
+
+    echo "Processing subscription '$subscription'"
+    n=$(echo $subscription | cut -f1 -d,)
+    ns=$(echo $subscription | cut -f2 -d,)
+
+    installplan=$(oc get subscriptions.operators.coreos.com -n ${ns} --field-selector metadata.name=${n} -o jsonpath='{.items[0].status.installPlanRef.name}')
+    installplanNs=$(oc get subscriptions.operators.coreos.com -n ${ns} --field-selector metadata.name=${n} -o jsonpath='{.items[0].status.installPlanRef.namespace}')
+    echo "Check installplan approved status"
+    oc get installplan $installplan -n $installplanNs -o jsonpath="{.spec.approved}"
+    if [ $(oc get installplan $installplan -n $installplanNs -o jsonpath="{.spec.approved}") == "false" ]; then
+      echo " - Approving Subscription $subscription with install plan $installplan"
+      oc patch installplan $installplan -n $installplanNs --type=json -p='[{"op":"replace","path": "/spec/approved", "value": true}]'
+    else
+      echo " - Install Plan '$installplan' already approved"
+    fi
+  done
+done
+`
 const NS = `
 apiVersion: v1
 kind: Namespace
@@ -356,65 +482,4 @@ kind: ServiceAccount
 metadata:
   name: installplan-approver
   namespace: installplan-approver
-`
-const ApproverJob = `
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: installplan-approver
-  namespace: installplan-approver
-spec:
-  manualSelector: true
-  activeDeadlineSeconds: 630
-  selector:
-    matchLabels:
-      job-name: installplan-approver
-  template:
-    metadata:
-      labels:
-        job-name: installplan-approver
-    spec:
-      containers:
-        -
-          command:
-            - /bin/bash
-            - "-c"
-            - |
-                echo "Continue approving operator installPlan for ${WAITTIME}sec ."
-                end=$((SECONDS+$WAITTIME))
-                while [ $SECONDS -lt $end ]; do
-                  echo "continue for " $SECONDS " - " $end
-                  oc get subscriptions.operators.coreos.com -A
-                  for subscription in $(oc get subscriptions.operators.coreos.com -A -o jsonpath='{range .items[*]}{.metadata.name}{","}{.metadata.namespace}{"\n"}')
-                  do
-                    if [ $subscription == "," ]; then
-                      continue
-                    fi
-                    echo "Processing subscription '$subscription'"
-                    n=$(echo $subscription | cut -f1 -d,)
-                    ns=$(echo $subscription | cut -f2 -d,)
-                    installplan=$(oc get subscriptions.operators.coreos.com -n ${ns} --field-selector metadata.name=${n} -o jsonpath='{.items[0].status.installPlanRef.name}')
-                    installplanNs=$(oc get subscriptions.operators.coreos.com -n ${ns} --field-selector metadata.name=${n} -o jsonpath='{.items[0].status.installPlanRef.namespace}')
-                    echo "Check installplan approved status"
-                    oc get installplan $installplan -n $installplanNs -o jsonpath="{.spec.approved}"
-                    if [ $(oc get installplan $installplan -n $installplanNs -o jsonpath="{.spec.approved}") == "false" ]; then
-                      echo "Approving Subscription $subscription with install plan $installplan"
-                      oc patch installplan $installplan -n $installplanNs --type=json -p='[{"op":"replace","path": "/spec/approved", "value": false}]'
-                    else
-                      echo "Install Plan '$installplan' already approved"
-                    fi
-                  done
-                done
-          env:
-            -
-              name: WAITTIME
-              value: "120"
-          image: registry.redhat.io/openshift4/ose-cli:latest
-          imagePullPolicy: IfNotPresent
-          name: installplan-approver
-      dnsPolicy: ClusterFirst
-      restartPolicy: OnFailure
-      serviceAccount: installplan-approver
-      serviceAccountName: installplan-approver
-      terminationGracePeriodSeconds: 60
 `

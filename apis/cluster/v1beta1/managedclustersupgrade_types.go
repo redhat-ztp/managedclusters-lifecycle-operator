@@ -60,12 +60,12 @@ type UpgradeStrategySpec struct {
 	//kubebuilder:validation:Minimum=1
 	// Max number of clusters to perform upgrade at the same time
 	MaxConcurrency int `json:"maxConcurrency"`
-	//+kubebuilder:default=180
-	// TimeOut for cluster upgrade process in min
-	ClusterUpgradeTimeout int `json:"clusterUpgradeTimeout,omitempty"`
-	//+kubebuilder:default=20
-	// TimeOut for cluster upgrade process in min
-	OperatorsUpgradeTimeout int `json:"operatorsUpgradeTimeout,omitempty"`
+	//+kubebuilder:default="3h"
+	// TimeOut for cluster upgrade process in hours default is (3h) or in min ex; 180m
+	ClusterUpgradeTimeout string `json:"clusterUpgradeTimeout,omitempty"`
+	//+kubebuilder:default="20m"
+	// TimeOut for operators upgrade process in min default is (20m) or in hours ex; 1h
+	OperatorsUpgradeTimeout string `json:"operatorsUpgradeTimeout,omitempty"`
 }
 
 // Label Action define the desire action for labeling the selected managed clusters

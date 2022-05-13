@@ -290,17 +290,19 @@ spec:
                         type: array
                     type: object
                   clusterUpgradeTimeout:
-                    default: 180
-                    description: TimeOut for cluster upgrade process in min
-                    type: integer
+                    default: 3h
+                    description: TimeOut for cluster upgrade process in hours default
+                      is (3h) or in min ex; 180m
+                    type: string
                   maxConcurrency:
                     description: Max number of clusters to perform upgrade at the
                       same time
                     type: integer
                   operatorsUpgradeTimeout:
-                    default: 20
-                    description: TimeOut for cluster upgrade process in min
-                    type: integer
+                    default: 20m
+                    description: TimeOut for operators upgrade process in min default
+                      is (20m) or in hours ex; 1h
+                    type: string
                 required:
                 - maxConcurrency
                 type: object

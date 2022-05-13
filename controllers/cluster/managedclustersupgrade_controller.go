@@ -122,7 +122,8 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 					}
 
 					// check Operators upgrade if only required
-					manifestWork, err = CreateOperatorUpgradeManifestWork(cluster.Name, managedClustersUpgrade.Spec.OcpOperators)
+					manifestWork, err = CreateOperatorUpgradeManifestWork(cluster.Name, managedClustersUpgrade.Spec.OcpOperators,
+						managedClustersUpgrade.Spec.UpgradeStrategy.OperatorsUpgradeTimeout, OseCliDefaultImage)
 					if err != nil {
 						klog.Info("OCP Operators ManifestWork not initaliz: "+cluster.Name+" ", err)
 					} else {
@@ -150,7 +151,8 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 						// check for ocp upgrade complete and operators upgrade not start
 						if cluster.ClusterUpgradeStatus.State == clusterv1beta1.CompleteState &&
 							cluster.OperatorsStatus.UpgradeApproveState == clusterv1beta1.NotStartedState {
-							manifestWork, err := CreateOperatorUpgradeManifestWork(cluster.Name, managedClustersUpgrade.Spec.OcpOperators)
+							manifestWork, err := CreateOperatorUpgradeManifestWork(cluster.Name, managedClustersUpgrade.Spec.OcpOperators,
+								managedClustersUpgrade.Spec.UpgradeStrategy.OperatorsUpgradeTimeout, OseCliDefaultImage)
 							if err != nil {
 								klog.Info("OCP Operators ManifestWork not initaliz: "+cluster.Name+" ", err)
 							} else {
@@ -219,7 +221,16 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 						}
 
 						if resAvailable {
-							managedClustersUpgrade.Status.Clusters[id].ClusterUpgradeStatus.State = clusterv1beta1.PartialState
+							version, state, verified, err := getClusterUpgradeManifestStatus(r.Client, cluster.Name+ClusterUpgradeManifestName, cluster.Name)
+							if err != nil {
+								klog.Error("Get ClusterUpgradeManifestStatus ", err)
+								continue
+							}
+							// validate same version as expected from status otherwise still in InitializedState
+							if version == managedClustersUpgrade.Spec.ClusterVersion.Version {
+								managedClustersUpgrade.Status.Clusters[id].ClusterUpgradeStatus.State = state
+								managedClustersUpgrade.Status.Clusters[id].ClusterUpgradeStatus.Verified = verified
+							}
 						}
 					} else if cluster.ClusterUpgradeStatus.State == clusterv1beta1.PartialState {
 						// check for managedCluster state to set
@@ -235,7 +246,6 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 							managedClustersUpgrade.Status.Clusters[id].ClusterUpgradeStatus.State = state
 							managedClustersUpgrade.Status.Clusters[id].ClusterUpgradeStatus.Verified = verified
 						}
-
 					} else if cluster.ClusterUpgradeStatus.State == clusterv1beta1.CompleteState {
 						// check if there is operator upgrade defined otherwise increase count
 						if managedClustersUpgrade.Spec.OcpOperators == nil {
@@ -342,6 +352,36 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 			// InProgress condition exist and its status is true
 			if apimeta.IsStatusConditionTrue(managedClustersUpgrade.Status.Conditions, TypeInProgress) {
 				apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, GetCompleteCondition())
+			}
+		}
+
+		// Condition TypeFailed
+		if condition := apimeta.FindStatusCondition(managedClustersUpgrade.Status.Conditions, TypeFailed); condition != nil {
+			failedNames := ""
+			failedCount := 0
+			for _, cluster := range managedClustersUpgrade.Status.Clusters {
+				if cluster.ClusterUpgradeStatus.State == clusterv1beta1.FailedState ||
+					cluster.OperatorsStatus.UpgradeApproveState == clusterv1beta1.FailedState {
+					failedCount++
+					failedNames = failedNames + ", "
+				}
+			}
+			condition.Message = GetFailedConditionMessage(failedCount, failedNames)
+		} else {
+			// Complete condition exist and its status is false
+			if apimeta.IsStatusConditionFalse(managedClustersUpgrade.Status.Conditions, TypeComplete) {
+				failedNames := ""
+				failedCount := 0
+				for _, cluster := range managedClustersUpgrade.Status.Clusters {
+					if cluster.ClusterUpgradeStatus.State == clusterv1beta1.FailedState ||
+						cluster.OperatorsStatus.UpgradeApproveState == clusterv1beta1.FailedState {
+						failedCount++
+						failedNames = failedNames + ", "
+					}
+				}
+				if failedCount != 0 {
+					apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, GetFailedCondition(failedCount, failedNames))
+				}
 			}
 		}
 
