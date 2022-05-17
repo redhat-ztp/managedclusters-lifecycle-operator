@@ -19,7 +19,11 @@ const (
 	TypeSelected   = "Selected"
 	TypeApplied    = "Applied"
 
+	TypeCanaryComplete = "CanaryComplete"
+	TypeCanaryFailed   = "CanaryFailed"
+
 	ReasonApplied                   = "ManagedClustersUpgradeApplied"
+	ReasonCanaryApplied             = "ManagedClustersUpgradeCanaryApplied"
 	ReasonOperatorsApplied          = "ManagedClustersOperatorsUpgradeApplied"
 	ReasonNotSelected               = "ManagedClustersNotSelected"
 	ReasonSelected                  = "ManagedClustersSelected"

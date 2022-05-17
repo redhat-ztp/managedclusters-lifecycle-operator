@@ -223,7 +223,7 @@ spec:
               upgradeStrategy:
                 description: UpgradeStrategy defines the upgrades Strategy
                 properties:
-                  CanaryClusters:
+                  canaryClusters:
                     description: CanaryClusters defines the list of managedClusters
                       that should be remediated first
                     properties:
@@ -311,6 +311,56 @@ spec:
             description: ManagedClustersUpgradeStatus defines the observed state of
               ManagedClustersUpgrade
             properties:
+              canaryClusters:
+                description: List of the selected Canary managedClusters with its
+                  upgrade status
+                items:
+                  description: ClusterStatus indicate the selected clusters upgrade
+                    status
+                  properties:
+                    clusterID:
+                      description: ManagedCluster generated ID
+                      type: string
+                    clusterUpgradeStatus:
+                      description: ManagedCluster upgrade status
+                      properties:
+                        state:
+                          description: state reflects whether the update was fully
+                            applied. The NotStart state indicates the update is not
+                            start yet. The Initialized state indicates the update
+                            has been initialized for the spoke. The Partial state
+                            indicates the update is not fully applied. while the Completed
+                            state indicates the update was successfully rolled out
+                            at least once (all parts of the update successfully applied).
+                          type: string
+                        verified:
+                          default: false
+                          description: verified indicates whether the provided update
+                            was properly verified before it was installed. If this
+                            is false the cluster may not be trusted.
+                          type: boolean
+                      type: object
+                    name:
+                      description: ManagedCluster Name
+                      type: string
+                    operatorsStatus:
+                      description: ManagedCluster Operators Upgrade status
+                      properties:
+                        upgradeApproveState:
+                          description: UpgradeApproveState reflects whether the operator
+                            install plan approve fully applied. The NotStart state
+                            indicates the install plan approve not start yet. The
+                            Initialized state indicates the install plan approve has
+                            been initialized. The Partial state indicates the install
+                            plan approve is not fully applied while the Completed
+                            state indicates install plan approve is running
+                          type: string
+                      type: object
+                  required:
+                  - clusterID
+                  - name
+                  type: object
+                type: array
               clusters:
                 description: List of the selected managedClusters with its upgrade
                   status
@@ -318,11 +368,6 @@ spec:
                   description: ClusterStatus indicate the selected clusters upgrade
                     status
                   properties:
-                    canary:
-                      default: false
-                      description: canary indicate the cluster is from canary clusters
-                        list
-                      type: boolean
                     clusterID:
                       description: ManagedCluster generated ID
                       type: string

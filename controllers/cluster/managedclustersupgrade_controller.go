@@ -81,8 +81,15 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 					return result, nil
 				}
 
+				canaryClustersStatus, err := r.initClustersList(r.Client, managedClustersUpgrade.Spec.UpgradeStrategy.CanaryClusters)
+				if err != nil {
+					klog.Error("Listing clusters: ", err)
+					return result, nil
+				}
+
+				managedClustersUpgrade.Status.CanaryClusters = canaryClustersStatus
 				managedClustersUpgrade.Status.Clusters = clustersStatus
-				apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, GetSelectedCondition(len(clustersStatus)))
+				apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, GetSelectedCondition(len(clustersStatus)+len(canaryClustersStatus)))
 			} else if condition.Reason == ReasonSelected && condition.Status == metav1.ConditionTrue {
 				//Check for label selector changes after select group of clusters
 
@@ -95,8 +102,15 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 				return result, nil
 			}
 
+			canaryClustersStatus, err := r.initClustersList(r.Client, managedClustersUpgrade.Spec.UpgradeStrategy.CanaryClusters)
+			if err != nil {
+				klog.Error("Listing clusters: ", err)
+				return result, nil
+			}
+
+			managedClustersUpgrade.Status.CanaryClusters = canaryClustersStatus
 			managedClustersUpgrade.Status.Clusters = clustersStatus
-			apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, GetSelectedCondition(len(clustersStatus)))
+			apimeta.SetStatusCondition(&managedClustersUpgrade.Status.Conditions, GetSelectedCondition(len(clustersStatus)+len(canaryClustersStatus)))
 		}
 
 		// Condition TypeApplied
@@ -104,6 +118,7 @@ func (r *ManagedClustersUpgradeReconciler) Reconcile(ctx context.Context, req ct
 			if condition.Status == metav1.ConditionFalse {
 				klog.Info("type applied condition false")
 				manifestCreated := false
+
 				for id, cluster := range managedClustersUpgrade.Status.Clusters {
 					// Create cluster upgrade first
 					manifestWork, err := CreateClusterVersionUpgradeManifestWork(cluster.Name, cluster.ClusterID, managedClustersUpgrade.Spec.ClusterVersion)

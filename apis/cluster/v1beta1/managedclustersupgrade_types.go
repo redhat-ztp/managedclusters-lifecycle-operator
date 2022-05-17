@@ -56,7 +56,7 @@ type GenericPlacementFields struct {
 // UpgradeStrategy defines the upgrades Strategy
 type UpgradeStrategySpec struct {
 	// CanaryClusters defines the list of managedClusters that should be remediated first
-	CanaryClusters GenericPlacementFields `json:"CanaryClusters,omitempty"`
+	CanaryClusters GenericPlacementFields `json:"canaryClusters,omitempty"`
 	//kubebuilder:validation:Minimum=1
 	// Max number of clusters to perform upgrade at the same time
 	MaxConcurrency int `json:"maxConcurrency"`
@@ -159,9 +159,6 @@ type ClusterStatusSpec struct {
 	ClusterID string `json:"clusterID"`
 	// ManagedCluster Name
 	Name string `json:"name"`
-	// canary indicate the cluster is from canary clusters list
-	//+kubebuilder:default=false
-	Canary bool `json:"canary,omitempty"`
 	// ManagedCluster upgrade status
 	ClusterUpgradeStatus ClusterUpgradeStatus `json:"clusterUpgradeStatus,omitempty"`
 	// ManagedCluster Operators Upgrade status
@@ -178,6 +175,9 @@ type ManagedClustersUpgradeStatus struct {
 
 	// List of the selected managedClusters with its upgrade status
 	Clusters []ClusterStatusSpec `json:"clusters,omitempty"`
+
+	// List of the selected Canary managedClusters with its upgrade status
+	CanaryClusters []ClusterStatusSpec `json:"canaryClusters,omitempty"`
 }
 
 //+kubebuilder:object:root=true
