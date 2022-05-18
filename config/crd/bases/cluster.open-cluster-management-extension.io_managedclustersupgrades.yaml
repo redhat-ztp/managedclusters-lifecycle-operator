@@ -295,6 +295,7 @@ spec:
                       is (3h) or in min ex; 180m
                     type: string
                   maxConcurrency:
+                    default: 10
                     description: Max number of clusters to perform upgrade at the
                       same time
                     type: integer

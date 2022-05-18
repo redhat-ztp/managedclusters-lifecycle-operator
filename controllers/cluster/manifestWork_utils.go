@@ -191,6 +191,7 @@ func CreateClusterVersionUpgradeManifestWork(clusterName string, clusterID strin
 	}
 	orphaningRules := []workv1.OrphaningRule{rule}
 
+	// TODO: Add failed condition to watch failed state
 	// Create manifest Config option to watch cluster version upgrade status
 	manifestConfigOpt := workv1.ManifestConfigOption{
 		ResourceIdentifier: workv1.ResourceIdentifier{

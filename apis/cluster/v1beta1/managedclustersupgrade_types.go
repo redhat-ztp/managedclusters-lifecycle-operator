@@ -58,6 +58,7 @@ type UpgradeStrategySpec struct {
 	// CanaryClusters defines the list of managedClusters that should be remediated first
 	CanaryClusters GenericPlacementFields `json:"canaryClusters,omitempty"`
 	//kubebuilder:validation:Minimum=1
+	//+kubebuilder:default=10
 	// Max number of clusters to perform upgrade at the same time
 	MaxConcurrency int `json:"maxConcurrency"`
 	//+kubebuilder:default="3h"
@@ -174,10 +175,10 @@ type ManagedClustersUpgradeStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// List of the selected managedClusters with its upgrade status
-	Clusters []ClusterStatusSpec `json:"clusters,omitempty"`
+	Clusters []*ClusterStatusSpec `json:"clusters,omitempty"`
 
 	// List of the selected Canary managedClusters with its upgrade status
-	CanaryClusters []ClusterStatusSpec `json:"canaryClusters,omitempty"`
+	CanaryClusters []*ClusterStatusSpec `json:"canaryClusters,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -282,13 +282,25 @@ func (in *ManagedClustersUpgradeStatus) DeepCopyInto(out *ManagedClustersUpgrade
 	}
 	if in.Clusters != nil {
 		in, out := &in.Clusters, &out.Clusters
-		*out = make([]ClusterStatusSpec, len(*in))
-		copy(*out, *in)
+		*out = make([]*ClusterStatusSpec, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(ClusterStatusSpec)
+				**out = **in
+			}
+		}
 	}
 	if in.CanaryClusters != nil {
 		in, out := &in.CanaryClusters, &out.CanaryClusters
-		*out = make([]ClusterStatusSpec, len(*in))
-		copy(*out, *in)
+		*out = make([]*ClusterStatusSpec, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(ClusterStatusSpec)
+				**out = **in
+			}
+		}
 	}
 }
 

@@ -22,36 +22,23 @@ const (
 	TypeCanaryComplete = "CanaryComplete"
 	TypeCanaryFailed   = "CanaryFailed"
 
-	ReasonApplied                   = "ManagedClustersUpgradeApplied"
-	ReasonCanaryApplied             = "ManagedClustersUpgradeCanaryApplied"
-	ReasonOperatorsApplied          = "ManagedClustersOperatorsUpgradeApplied"
-	ReasonNotSelected               = "ManagedClustersNotSelected"
-	ReasonSelected                  = "ManagedClustersSelected"
-	ReasonUpgradeInProgress         = "ManagedClustersUpgradeInProgress"
-	ReasonUpgradeOperatorInProgress = "ManagedClustersUpgradeOperatorsInProgress"
-	ReasonCanaryUpgradeInProgress   = "ManagedClustersCanaryUpgradeInProgress"
-	ReasonUpgradeFailed             = "ManagedClustersUpgradeFailed"
-	ReasonUpgradeCanaryFailed       = "ManagedClustersCanaryUpgradeFailed"
-	ReasonUpgradeComplete           = "ManagedClustersUpgradeComplete"
-	ReasonUpgradeCanaryComplete     = "ManagedClustersCanaryUpgradeComplete"
+	ReasonApplied               = "ManagedClustersUpgradeApplied"
+	ReasonNotSelected           = "ManagedClustersNotSelected"
+	ReasonSelected              = "ManagedClustersSelected"
+	ReasonUpgradeInProgress     = "ManagedClustersUpgradeInProgress"
+	ReasonUpgradeFailed         = "ManagedClustersUpgradeFailed"
+	ReasonUpgradeCanaryFailed   = "ManagedClustersCanaryUpgradeFailed"
+	ReasonUpgradeComplete       = "ManagedClustersUpgradeComplete"
+	ReasonUpgradeCanaryComplete = "ManagedClustersCanaryUpgradeComplete"
 )
-
-// ConvertLabels converts LabelSelectors to Selectors
-func ConvertLabels(labelSelector *metav1.LabelSelector) (labels.Selector, error) {
-	if labelSelector != nil {
-		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
-		if err != nil {
-			return labels.Nothing(), err
-		}
-
-		return selector, nil
-	}
-
-	return labels.Everything(), nil
-}
 
 func GetFailedCondition(failedCount int, failedNames string) metav1.Condition {
 	return getCondition(TypeFailed, ReasonUpgradeFailed, GetFailedConditionMessage(failedCount, failedNames),
+		metav1.ConditionTrue)
+}
+
+func GetCanaryFailedCondition(failedCount int, failedNames string) metav1.Condition {
+	return getCondition(TypeCanaryFailed, ReasonUpgradeCanaryFailed, GetFailedConditionMessage(failedCount, failedNames),
 		metav1.ConditionTrue)
 }
 
@@ -61,6 +48,10 @@ func GetFailedConditionMessage(failedCount int, failedNames string) string {
 
 func GetCompleteCondition() metav1.Condition {
 	return getCondition(TypeComplete, ReasonUpgradeComplete, "ManagedClsuters upgrade Complete", metav1.ConditionFalse)
+}
+
+func GetCanaryCompleteCondition() metav1.Condition {
+	return getCondition(TypeCanaryComplete, ReasonUpgradeCanaryComplete, "ManagedClsuters canary upgrade Complete", metav1.ConditionFalse)
 }
 
 func GetInProgressCondition() metav1.Condition {
@@ -89,6 +80,20 @@ func getCondition(conditionType string, reason string, message string, status me
 		Status:             status,
 		LastTransitionTime: metav1.Now(),
 	}
+}
+
+// ConvertLabels converts LabelSelectors to Selectors
+func ConvertLabels(labelSelector *metav1.LabelSelector) (labels.Selector, error) {
+	if labelSelector != nil {
+		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+		if err != nil {
+			return labels.Nothing(), err
+		}
+
+		return selector, nil
+	}
+
+	return labels.Nothing(), nil
 }
 
 // Get ManagedCluster list based on the given label selector
