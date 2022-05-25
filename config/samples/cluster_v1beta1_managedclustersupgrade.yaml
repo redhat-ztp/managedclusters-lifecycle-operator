@@ -1,9 +1,31 @@
 apiVersion: cluster.open-cluster-management-extension.io/v1beta1
 kind: ManagedClustersUpgrade
 metadata:
-  name: managedclustersupgrade-sample
+  name: prod-upgrade
+  namespace: default
 spec:
-  clusters:
-  - name: myCluster
+  clusterSelector:
+    matchExpressions:
+      - key: type
+        operator: In
+        values:
+          - 'prod'
+  clusterVersion:
+    channel: stable-4.10
+    version: 4.10.8
   ocpOperators:
-    approveAllUpgrades: true
+    approveAllUpgrades: false
+    include:
+      - name: local-storage-operator
+        namespace: openshift-local-storage
+  upgradeStrategy:
+    canaryClusters:
+      clusterSelector:
+        matchExpressions:
+          - key: name
+            operator: In
+            values:
+            - ocp-prod-backup
+    clusterUpgradeTimeout: 2h
+    maxConcurrency: 4
+    operatorsUpgradeTimeout: 20m

@@ -11,6 +11,7 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	//"k8s.io/klog"
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
@@ -248,34 +249,51 @@ func getJsonFromYaml(yamlStr string) []byte {
 	return nil
 }
 
-func getManifestWork(kubeclient client.Client, name string, ns string) (*workv1.ManifestWork, error) {
+func getManifestWork(kubeclient client.Client, name string, ns string, timeOut string) (*workv1.ManifestWork, bool, error) {
+	isTimeOut := false
 	manifestWork := &workv1.ManifestWork{}
 	err := kubeclient.Get(context.TODO(), client.ObjectKey{
 		Name:      name,
 		Namespace: ns,
 	}, manifestWork)
 	if err != nil {
-		return nil, err
+		return nil, isTimeOut, err
 	}
-	return manifestWork, nil
+	if timeOut != "" {
+		mwTimeOut, err := time.ParseDuration(timeOut)
+		if err != nil {
+			return manifestWork, isTimeOut, err
+		}
+		// Add 5 min timeOut to avoid feedback delay or overlap timeout less than Reconcile every 5min
+		//min := time.Duration(mwTimeOut.Minutes() + float64(5))
+		timeRemaining := &metav1.Time{
+			Time: manifestWork.CreationTimestamp.Add(mwTimeOut),
+		}
+
+		timeNow := metav1.Now()
+		isTimeOut = !timeNow.Before(timeRemaining)
+		//klog.Info("mwTimeOut= ", mwTimeOut, " manifestWork.CreationTimestamp= ", manifestWork.CreationTimestamp,
+		//	" timeRemaining= ", timeRemaining, " timeNow= ", timeNow, " isTimeOut= ", isTimeOut)
+	}
+	return manifestWork, isTimeOut, nil
 }
 
-func isManifestWorkResourcesAvailable(kubeclient client.Client, name string, ns string) (bool, error) {
-	manifestwork, err := getManifestWork(kubeclient, name, ns)
+func isManifestWorkResourcesAvailable(kubeclient client.Client, name string, ns string, timeOut string) (bool, bool, error) {
+	manifestwork, isTimeOut, err := getManifestWork(kubeclient, name, ns, timeOut)
 	if err != nil {
-		return false, err
+		return false, isTimeOut, err
 	}
 
-	return apimeta.IsStatusConditionTrue(manifestwork.Status.Conditions, workv1.WorkAvailable), nil
+	return apimeta.IsStatusConditionTrue(manifestwork.Status.Conditions, workv1.WorkAvailable), isTimeOut, nil
 }
 
 // Get the clusterVersion Upgrade  status (value); state, version, verified
-func getClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns string) (string, string, bool, error) {
+func getClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns string, timeOut string) (string, string, bool, bool, error) {
 	version, state := "", ""
 	verified := false
-	manifestwork, err := getManifestWork(kubeclient, name, ns)
+	manifestwork, isTimeOut, err := getManifestWork(kubeclient, name, ns, timeOut)
 	if err != nil {
-		return version, state, verified, err
+		return version, state, verified, isTimeOut, err
 	}
 
 	for _, manifest := range manifestwork.Status.ResourceStatus.Manifests {
@@ -291,24 +309,24 @@ func getClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns s
 			}
 		}
 	}
-	return version, state, verified, err
+	return version, state, verified, isTimeOut, err
 }
 
 // Get the Operator Upgrade Job status (name, value); active, succeeded or failed
-func getOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns string) (string, int, error) {
-	manifestwork, err := getManifestWork(kubeclient, name, ns)
+func getOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns string, timeOut string) (string, int, bool, error) {
+	manifestwork, isTimeOut, err := getManifestWork(kubeclient, name, ns, timeOut)
 	if err != nil {
-		return "", 0, err
+		return "", 0, isTimeOut, err
 	}
 	for _, manifest := range manifestwork.Status.ResourceStatus.Manifests {
 		if manifest.ResourceMeta.Kind == "Job" {
 			if len(manifest.StatusFeedbacks.Values) < 1 {
-				return "", 0, fmt.Errorf("Operator Upgrade job status not found %s", name)
+				return "", 0, isTimeOut, fmt.Errorf("Operator Upgrade job status not found %s", name)
 			}
-			return manifest.StatusFeedbacks.Values[0].Name, int(*manifest.StatusFeedbacks.Values[0].Value.Integer), nil
+			return manifest.StatusFeedbacks.Values[0].Name, int(*manifest.StatusFeedbacks.Values[0].Value.Integer), isTimeOut, nil
 		}
 	}
-	return "", 0, fmt.Errorf("Operator Upgrade job not found %s", name)
+	return "", 0, isTimeOut, fmt.Errorf("Operator Upgrade job not found %s", name)
 }
 
 func deleteManifestWork(kubeclient client.Client, name string, ns string) error {

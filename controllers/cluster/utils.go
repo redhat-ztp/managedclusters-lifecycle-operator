@@ -152,25 +152,3 @@ func GetManagedClusterList(kubeclient client.Client, placement managedClusterv1b
 
 	return mClusterMap, nil
 }
-
-//func GetManagedClusterInfo(kubeclient client.Client, clusterName string) (*clusterinfov1beta1.ManagedClusterInfo, error) {
-//	mClusterInfo := &clusterinfov1beta1.ManagedClusterInfo{}
-//	err := kubeclient.Get(context.TODO(), client.ObjectKey{Name: clusterName, Namespace: clusterName}, mClusterInfo)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return mClusterInfo, nil
-//}
-
-//func IsManagedClusterVersionComplete(kubeclient client.Client, clusterName string, version string) (bool, error) {
-//	mClusterInfo, err := GetManagedClusterInfo(kubeclient, clusterName)
-//	if err != nil {
-//		return false, err
-//	}
-//	for _, versionHistory := range mClusterInfo.Status.DistributionInfo.OCP.VersionHistory {
-//		if versionHistory.Version == version {
-//			return versionHistory.State == managedClusterv1beta1.CompleteState, nil
-//		}
-//	}
-//	return false, nil
-//}

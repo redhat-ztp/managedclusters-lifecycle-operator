@@ -1,6 +1,6 @@
-# Managed Clusters LifeCycle Operator (MCL Operator)
+# Managed Clusters LifeCycle Controller (MCL Controller)
 
-MCL (Managed Clusters LifeCycle) operator manages the OpenShift clusters and its Subscriptions (operators) upgrades. 
+MCL (Managed Clusters LifeCycle) controller manages the OpenShift clusters and its Subscriptions (operators) upgrades. 
 In order to perform platform upgrade to group of managed clusters using RHACM, the ClusterVersion CR (version) with the desired upgrade configurations as the example below needs to be applied at each managed cluster.
 ```
 apiVersion: config.openshift.io/v1
@@ -10,11 +10,11 @@ metadata:
 spec:
   channel: stable-4.9
   desiredUpdate:
-    version: 4.9.33
+    version: 4.9.24
 ```
-MCL operator uses RHACM to select group of managed clusters based on label or name and apply the cluster version configuration on the selected clusters.
-MCL operator does not set the cluster's subscription version. However, it approves the install plan for subscriptions to apply the upgrades.
-The ManagedClustersUpgrade CRD defines the match expression for cluster selector and the cluster version configurations. 
+MCL controller can select group of managed clusters based on label or name and apply the cluster version configuration on the selected clusters.
+MCL controller does not set the cluster's subscription version. However, it approves the install plan for subscriptions to apply the upgrades, more info about subscriptions in [Operator Lifecycle Manager](https://docs.openshift.com/container-platform/4.10/operators/understanding/olm/olm-understanding-olm.html).
+The ManagedClustersUpgrade CR defines the clusters selector, the cluster version configurations and the subscriptions configurations. 
 The example below select group of clusters with label common is true, set the cluster version to v4.9.22 and approve the install plan for all subscriptions that installed on the managed cluster. 
 
 ```
@@ -37,7 +37,7 @@ spec:
     approveAllUpgrades: true
 ```
 
-Other example below; select group of cluster with type is prod and having a canary cluster name is ocp-prod-backup. It set the cluster version to v4.10.8 and approve only the subscription local-storage-operator upgrade.  
+Other example below; select group of cluster with label type is prod and having a canary cluster name is ocp-prod-backup. It sets the cluster version to v4.10.8 and approve only the local-storage-operator (subscription) to upgrade.  
 ```
 apiVersion: cluster.open-cluster-management-extension.io/v1beta1
 kind: ManagedClustersUpgrade
@@ -74,8 +74,7 @@ spec:
 
 ## How it works
 
-MCL operator uses the ManagedClustersUpgrade CR to select the managed clusters, clusterVersion configuration and subscriptions upgrade. 
-The MCL operator use the RHACM ManifestWork API to creates a manifestwork for each managed cluster to apply the clusterVersion configuration and continue monitoring the upgrade status till it complete or fail.
+The MCL controller uses the RHACM ManifestWork API to creates a manifestwork CR for each managed cluster to apply the clusterVersion configuration and continue monitoring the upgrade status till it complete or fail.
 The managed cluster upgrade process has 5 states;
 
   - **NotStart** state indicates the update is not start yet. 
@@ -84,8 +83,8 @@ The managed cluster upgrade process has 5 states;
   - **Completed** state indicates the update was successfully rolled out at least once.
   - **Failed** state indicates the update did not successfully applied to the managed cluster.
 
-After the managed cluster upgrade complete successfully, MCL operator will creates another ManifestWork for each managed cluster to approve the install plan for the selected subscriptions. 
-The example below show the ManagedClustersUpgrade CR status for a selected group of clusters
+After the managed cluster upgrade complete successfully, MCL controller will creates a manifestWork for each managed cluster to approve the install plan of the selected subscriptions. 
+The example below shows the ManagedClustersUpgrade CR status.
 
 ```
 apiVersion: cluster.open-cluster-management-extension.io/v1beta1
