@@ -13,6 +13,8 @@ spec:
     kind: ManagedClustersUpgrade
     listKind: ManagedClustersUpgradeList
     plural: managedclustersupgrades
+    shortNames:
+    - mcu
     singular: managedclustersupgrade
   scope: Namespaced
   versions:
@@ -325,6 +327,9 @@ spec:
                     clusterUpgradeStatus:
                       description: ManagedCluster upgrade status
                       properties:
+                        message:
+                          description: message reflect the upgrade state output
+                          type: string
                         state:
                           description: state reflects whether the update was fully
                             applied. The NotStart state indicates the update is not
@@ -375,6 +380,9 @@ spec:
                     clusterUpgradeStatus:
                       description: ManagedCluster upgrade status
                       properties:
+                        message:
+                          description: message reflect the upgrade state output
+                          type: string
                         state:
                           description: state reflects whether the update was fully
                             applied. The NotStart state indicates the update is not

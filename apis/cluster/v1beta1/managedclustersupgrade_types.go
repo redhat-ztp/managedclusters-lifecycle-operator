@@ -143,6 +143,9 @@ type ClusterUpgradeStatus struct {
 	// before it was installed. If this is false the cluster may not be trusted.
 	//+kubebuilder:default=false
 	Verified bool `json:"verified,omitempty"`
+
+	// message reflect the upgrade state output
+	Message string `json:"message,omitempty"`
 }
 
 // OperatorStatus indicate that operators installPlan approved
@@ -183,6 +186,7 @@ type ManagedClustersUpgradeStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:resource:path=managedclustersupgrades,shortName=mcu
 
 // ManagedClustersUpgrade is the Schema for the managedclustersupgrades API
 type ManagedClustersUpgrade struct {

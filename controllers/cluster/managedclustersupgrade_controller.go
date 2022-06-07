@@ -275,7 +275,8 @@ func (r *ManagedClustersUpgradeReconciler) processAppliedCondition(ctx context.C
 			break
 		}
 
-		// ignore failed/complete clusters
+		//TODO: Better to ignore only the completed clusters if the clusters in a single batch all failed we don't want to continue.
+		// Ignore failed/complete clusters
 		if cluster.OperatorsStatus.UpgradeApproveState == clusterv1beta1.CompleteState ||
 			cluster.OperatorsStatus.UpgradeApproveState == clusterv1beta1.FailedState {
 			continue
@@ -353,9 +354,9 @@ func (r *ManagedClustersUpgradeReconciler) processInProgressCondition(managedClu
 			if resAvailable {
 				inProgress = true
 
-				version, state, verified, _, err := getClusterUpgradeManifestStatus(r.Client, cluster.Name+ClusterUpgradeManifestName, cluster.Name, managedClustersUpgrade.Spec.UpgradeStrategy.ClusterUpgradeTimeout)
+				version, state, verified, message, _, err := getClusterUpgradeManifestStatus(r.Client, cluster.Name+ClusterUpgradeManifestName, cluster.Name, managedClustersUpgrade.Spec.UpgradeStrategy.ClusterUpgradeTimeout)
 				if err != nil {
-					klog.Error("Get ClusterUpgradeManifestStatus ", err)
+					klog.Error("Error ClusterUpgradeManifestStatus ", err)
 					continue
 				}
 				// validate same version as expected from status otherwise still in InitializedState
@@ -363,6 +364,7 @@ func (r *ManagedClustersUpgradeReconciler) processInProgressCondition(managedClu
 					cluster.ClusterUpgradeStatus.State = state
 					cluster.ClusterUpgradeStatus.Verified = verified
 				}
+				cluster.ClusterUpgradeStatus.Message = message
 			}
 
 			// Check for timeout & InitializedState in case the timeout is less than the Reconcile time.
@@ -375,18 +377,19 @@ func (r *ManagedClustersUpgradeReconciler) processInProgressCondition(managedClu
 			// check for managedCluster state to set
 			klog.Info("I'm in ocp upgrade partial state")
 			inProgress = true
-			version, state, verified, isTimeOut, err := getClusterUpgradeManifestStatus(r.Client, cluster.Name+ClusterUpgradeManifestName, cluster.Name, managedClustersUpgrade.Spec.UpgradeStrategy.ClusterUpgradeTimeout)
+			version, state, verified, message, isTimeOut, err := getClusterUpgradeManifestStatus(r.Client, cluster.Name+ClusterUpgradeManifestName, cluster.Name, managedClustersUpgrade.Spec.UpgradeStrategy.ClusterUpgradeTimeout)
 			if err != nil {
-				klog.Error("Get ClusterUpgradeManifestStatus ", err)
+				klog.Error("Error ClusterUpgradeManifestStatus ", err)
 				continue
 			}
 
-			klog.Info("ClusterUpgradeManifestStatus ", version+" ", state+" ", verified)
+			klog.Info("ClusterUpgradeManifestStatus ", version+" ", state+" ", verified, " ", message)
 			// validate same version as expected from status
 			if version == managedClustersUpgrade.Spec.ClusterVersion.Version {
 				cluster.ClusterUpgradeStatus.State = state
 				cluster.ClusterUpgradeStatus.Verified = verified
 			}
+			cluster.ClusterUpgradeStatus.Message = message
 
 			// Add check if the complete state reached before the Reconcile or timeout
 			if isTimeOut && cluster.ClusterUpgradeStatus.State != clusterv1beta1.CompleteState {
@@ -437,11 +440,6 @@ func (r *ManagedClustersUpgradeReconciler) processInProgressCondition(managedClu
 				cluster.OperatorsStatus.UpgradeApproveState = clusterv1beta1.PartialState
 			}
 
-			// Add check if the complete state reached before the Reconcile or timeout
-			//if isTimeOut && cluster.OperatorsStatus.UpgradeApproveState != clusterv1beta1.CompleteState {
-			//	klog.Info("cluster operators upgrade timeout ", cluster.Name)
-			//	cluster.OperatorsStatus.UpgradeApproveState = clusterv1beta1.FailedState
-			//}
 		} else if cluster.OperatorsStatus.UpgradeApproveState == clusterv1beta1.CompleteState {
 			countComplete++
 		}
@@ -489,7 +487,8 @@ func (r *ManagedClustersUpgradeReconciler) processCompleteCondition(managedClust
 				klog.Error("Delete manifestwork ", manifestName+" ", err)
 			}
 		} else if cluster.OperatorsStatus.UpgradeApproveState == clusterv1beta1.NotStartedState {
-			if managedClustersUpgrade.Spec.OcpOperators != nil {
+			if managedClustersUpgrade.Spec.OcpOperators != nil && (managedClustersUpgrade.Spec.OcpOperators.ApproveAllUpgrades ||
+				len(managedClustersUpgrade.Spec.OcpOperators.Include) > 0) {
 				completeAll = false
 			}
 		} else {

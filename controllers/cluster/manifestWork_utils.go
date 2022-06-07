@@ -216,6 +216,10 @@ func CreateClusterVersionUpgradeManifestWork(clusterName string, clusterID strin
 						Name: "verified",
 						Path: ".status.history[0].verified",
 					},
+					workv1.JsonPath{
+						Name: "message",
+						Path: ".status.conditions[?(@.type==\"Progressing\")].message",
+					},
 				},
 			},
 		},
@@ -288,12 +292,12 @@ func isManifestWorkResourcesAvailable(kubeclient client.Client, name string, ns 
 }
 
 // Get the clusterVersion Upgrade  status (value); state, version, verified
-func getClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns string, timeOut string) (string, string, bool, bool, error) {
-	version, state := "", ""
+func getClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns string, timeOut string) (string, string, bool, string, bool, error) {
+	version, state, message := "", "", ""
 	verified := false
 	manifestwork, isTimeOut, err := getManifestWork(kubeclient, name, ns, timeOut)
 	if err != nil {
-		return version, state, verified, isTimeOut, err
+		return version, state, verified, message, isTimeOut, err
 	}
 
 	for _, manifest := range manifestwork.Status.ResourceStatus.Manifests {
@@ -305,11 +309,13 @@ func getClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns s
 					state = string(*v.Value.String)
 				} else if v.Name == "verified" {
 					verified = bool(*v.Value.Boolean)
+				} else if v.Name == "message" {
+					message = string(*v.Value.String)
 				}
 			}
 		}
 	}
-	return version, state, verified, isTimeOut, err
+	return version, state, verified, message, isTimeOut, err
 }
 
 // Get the Operator Upgrade Job status (name, value); active, succeeded or failed
