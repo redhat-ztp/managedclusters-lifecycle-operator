@@ -69,24 +69,6 @@ type UpgradeStrategySpec struct {
 	OperatorsUpgradeTimeout string `json:"operatorsUpgradeTimeout,omitempty"`
 }
 
-// Label Action define the desire action for labeling the selected managed clusters
-type LabelAction struct {
-	// AddClusterLabels is a map of key/value pairs labels that will be added to the selected managedClusters.
-	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
-	// DeleteClusterLabels is a map of key/value pairs labels that will be deleted from the selected managedClusters.
-	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
-}
-
-// ManagedClusterLabelAction define the desire state to label the selected managed clusters
-type ManagedClusterLabelActionSpec struct {
-	// Before starting the upgrade make label action for the selected managed cluster.
-	BeforeUpgrade LabelAction `json:"beforeUpgrade,omitempty"`
-	// After cluster version upgrade done make label action for the selected managed cluster.
-	AfterClusterUpgrade LabelAction `json:"afterClusterUpgrade,omitempty"`
-	// After the upgrade (clusterVersion & operators) done make label action for the selected managed cluster.
-	AfterUpgrade LabelAction `json:"afterUpgrade,omitempty"`
-}
-
 // ClusterVersion define the desired state of ClusterVersion
 type ClusterVersionSpec struct {
 	// version for cluster upgrade
@@ -126,8 +108,6 @@ type ManagedClustersUpgradeSpec struct {
 	ClusterVersion *ClusterVersionSpec `json:"clusterVersion,omitempty"`
 	// +optional
 	OcpOperators *OcpOperatorsSpec `json:"ocpOperators,omitempty"`
-	// +optional
-	ManagedClusterLabelAction *ManagedClusterLabelActionSpec `json:"managedClusterLabelAction,omitempty"`
 }
 
 // ClusterUpgradeStatus is a single attempted update to the cluster.
