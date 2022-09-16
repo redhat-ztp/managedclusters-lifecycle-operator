@@ -1,0 +1,6 @@
+apiVersion: work.open-cluster-management-extension.io/v1beta1
+kind: ManagedClusterGroupWork
+metadata:
+  name: managedclustergroupwork-sample
+spec:
+  # TODO(user): Add fields here

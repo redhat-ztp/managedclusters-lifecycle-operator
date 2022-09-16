@@ -7,6 +7,32 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - act.open-cluster-management-extension.io
+  resources:
+  - managedclustergroupacts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - act.open-cluster-management-extension.io
+  resources:
+  - managedclustergroupacts/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - act.open-cluster-management-extension.io
+  resources:
+  - managedclustergroupacts/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - cluster.open-cluster-management-extension.io
   resources:
   - managedclustersupgrades
@@ -28,6 +54,32 @@ rules:
   - cluster.open-cluster-management-extension.io
   resources:
   - managedclustersupgrades/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - work.open-cluster-management-extension.io
+  resources:
+  - managedclustergroupworks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - work.open-cluster-management-extension.io
+  resources:
+  - managedclustergroupworks/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - work.open-cluster-management-extension.io
+  resources:
+  - managedclustergroupworks/status
   verbs:
   - get
   - patch

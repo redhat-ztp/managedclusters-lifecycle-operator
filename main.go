@@ -31,10 +31,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
-	clustercontrollers "github.com/redhat-ztp/managedclusters-lifecycle-operator/controllers/cluster"
+	actionv1beta1 "github.com/stolostron/cluster-lifecycle-api/action/v1beta1"
+	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
+
+	actv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/act/v1beta1"
+	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	workv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/work/v1beta1"
+	actcontrollers "github.com/redhat-ztp/managedclusters-lifecycle-operator/controllers/act"
+	clustercontrollers "github.com/redhat-ztp/managedclusters-lifecycle-operator/controllers/cluster"
+	workcontrollers "github.com/redhat-ztp/managedclusters-lifecycle-operator/controllers/work"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -48,7 +55,11 @@ func init() {
 
 	utilruntime.Must(clusterv1beta1.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
+	utilruntime.Must(viewv1beta1.AddToScheme(scheme))
+	utilruntime.Must(actionv1beta1.AddToScheme(scheme))
 	utilruntime.Must(workv1.AddToScheme(scheme))
+	utilruntime.Must(actv1beta1.AddToScheme(scheme))
+	utilruntime.Must(workv1beta1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -87,6 +98,20 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ManagedClustersUpgrade")
+		os.Exit(1)
+	}
+	if err = (&actcontrollers.ManagedClusterGroupActReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ManagedClusterGroupAct")
+		os.Exit(1)
+	}
+	if err = (&workcontrollers.ManagedClusterGroupWorkReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ManagedClusterGroupWork")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

@@ -1,0 +1,20 @@
+# permissions for end users to view managedclustergroupacts.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: managedclustergroupact-viewer-role
+rules:
+- apiGroups:
+  - act.open-cluster-management-extension.io
+  resources:
+  - managedclustergroupacts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - act.open-cluster-management-extension.io
+  resources:
+  - managedclustergroupacts/status
+  verbs:
+  - get

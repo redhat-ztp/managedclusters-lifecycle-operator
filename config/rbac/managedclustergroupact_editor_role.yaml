@@ -1,0 +1,24 @@
+# permissions for end users to edit managedclustergroupacts.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: managedclustergroupact-editor-role
+rules:
+- apiGroups:
+  - act.open-cluster-management-extension.io
+  resources:
+  - managedclustergroupacts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - act.open-cluster-management-extension.io
+  resources:
+  - managedclustergroupacts/status
+  verbs:
+  - get

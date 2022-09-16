@@ -6,6 +6,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	github.com/openshift/api v0.0.0-20220222102030-354aa98a475c
+	github.com/stolostron/cluster-lifecycle-api v0.0.0-20220714081119-eae2fe1f05fd
 	github.com/stretchr/testify v1.7.0
 	k8s.io/api v0.24.0
 	k8s.io/apimachinery v0.24.0
