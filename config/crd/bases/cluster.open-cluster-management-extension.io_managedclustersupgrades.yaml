@@ -166,6 +166,24 @@ spec:
                 required:
                 - approveAllUpgrades
                 type: object
+              placement:
+                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                  Important: Run "make" to regenerate code after modifying this file'
+                properties:
+                  kind:
+                    description: kind must be either placement or placementRule
+                    type: string
+                  name:
+                    description: Name
+                    type: string
+                  namespace:
+                    description: Namespace
+                    type: string
+                required:
+                - kind
+                - name
+                - namespace
+                type: object
               upgradeStrategy:
                 description: UpgradeStrategy defines the upgrades Strategy
                 properties:

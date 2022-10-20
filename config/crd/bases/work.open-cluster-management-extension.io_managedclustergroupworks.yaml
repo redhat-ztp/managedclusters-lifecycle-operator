@@ -98,46 +98,6 @@ spec:
                   - name
                   type: object
                 type: array
-              managedClusterLabelWork:
-                description: Label actions to be applied on the selected clusters
-                properties:
-                  afterWork:
-                    description: After the manifest work is done make label the selected
-                      managed cluster.
-                    properties:
-                      addClusterLabels:
-                        additionalProperties:
-                          type: string
-                        description: AddClusterLabels is a map of key/value pairs
-                          labels that will be added to the selected managedClusters.
-                          If the label already exist it will be update its value
-                        type: object
-                      deleteClusterLabels:
-                        additionalProperties:
-                          type: string
-                        description: DeleteClusterLabels is a map of key/value pairs
-                          labels that will be deleted from the selected managedClusters.
-                        type: object
-                    type: object
-                  beforeWork:
-                    description: Before starting the manifest work label the selected
-                      managed cluster.
-                    properties:
-                      addClusterLabels:
-                        additionalProperties:
-                          type: string
-                        description: AddClusterLabels is a map of key/value pairs
-                          labels that will be added to the selected managedClusters.
-                          If the label already exist it will be update its value
-                        type: object
-                      deleteClusterLabels:
-                        additionalProperties:
-                          type: string
-                        description: DeleteClusterLabels is a map of key/value pairs
-                          labels that will be deleted from the selected managedClusters.
-                        type: object
-                    type: object
-                type: object
               manifesWorks:
                 description: List of manifestWorks to be applied on the selected clusters
                 items:
@@ -227,6 +187,54 @@ spec:
                                   type: array
                               type: object
                           type: object
+                        executor:
+                          description: Executor is the configuration that makes the
+                            work agent to perform some pre-request processing/checking.
+                            e.g. the executor identity tells the work agent to check
+                            the executor has sufficient permission to write the workloads
+                            to the local managed cluster. Note that nil executor is
+                            still supported for backward-compatibility which indicates
+                            that the work agent will not perform any additional actions
+                            before applying resources.
+                          properties:
+                            subject:
+                              description: Subject is the subject identity which the
+                                work agent uses to talk to the local cluster when
+                                applying the resources.
+                              properties:
+                                serviceAccount:
+                                  description: ServiceAccount is for identifying which
+                                    service account to use by the work agent. Only
+                                    required if the type is "ServiceAccount".
+                                  properties:
+                                    name:
+                                      description: Name is the name of the service
+                                        account.
+                                      maxLength: 253
+                                      minLength: 1
+                                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)$
+                                      type: string
+                                    namespace:
+                                      description: Namespace is the namespace of the
+                                        service account.
+                                      maxLength: 253
+                                      minLength: 1
+                                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)$
+                                      type: string
+                                  required:
+                                  - name
+                                  - namespace
+                                  type: object
+                                type:
+                                  description: 'Type is the type of the subject identity.
+                                    Supported types are: "ServiceAccount".'
+                                  enum:
+                                  - ServiceAccount
+                                  type: string
+                              required:
+                              - type
+                              type: object
+                          type: object
                         manifestConfigs:
                           description: ManifestConfigs represents the configurations
                             of manifests defined in workload field.
@@ -236,7 +244,8 @@ spec:
                             properties:
                               feedbackRules:
                                 description: FeedbackRules defines what resource status
-                                  field should be returned.
+                                  field should be returned. If it is not set or empty,
+                                  no feedback rules will be honored.
                                 items:
                                   properties:
                                     jsonPaths:
@@ -319,8 +328,50 @@ spec:
                                 - name
                                 - resource
                                 type: object
+                              updateStrategy:
+                                description: UpdateStrategy defines the strategy to
+                                  update this manifest. UpdateStrategy is Update if
+                                  it is not set, optional
+                                properties:
+                                  serverSideApply:
+                                    description: serverSideApply defines the configuration
+                                      for server side apply. It is honored only when
+                                      type of updateStrategy is ServerSideApply
+                                    properties:
+                                      fieldManager:
+                                        default: work-agent
+                                        description: FieldManager is the manager to
+                                          apply the resource. It is work-agent by
+                                          default, but can be other name with work-agent
+                                          as the prefix.
+                                        pattern: ^work-agent
+                                        type: string
+                                      force:
+                                        description: Force represents to force apply
+                                          the manifest.
+                                        type: boolean
+                                    type: object
+                                  type:
+                                    default: Update
+                                    description: type defines the strategy to update
+                                      this manifest, default value is Update. Update
+                                      type means to update resource by an update call.
+                                      CreateOnly type means do not update resource
+                                      based on current manifest. ServerSideApply type
+                                      means to update resource using server side apply
+                                      with work-controller as the field manager. If
+                                      there is conflict, the related Applied condition
+                                      of manifest will be in the status of False with
+                                      the reason of ApplyConflict.
+                                    enum:
+                                    - Update
+                                    - CreateOnly
+                                    - ServerSideApply
+                                    type: string
+                                required:
+                                - type
+                                type: object
                             required:
-                            - feedbackRules
                             - resourceIdentifier
                             type: object
                           type: array

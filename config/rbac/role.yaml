@@ -33,6 +33,18 @@ rules:
   - patch
   - update
 - apiGroups:
+  - action.open-cluster-management.io
+  resources:
+  - managedclusteraction
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - cluster.open-cluster-management-extension.io
   resources:
   - managedclustersupgrades
@@ -58,6 +70,18 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - view.open-cluster-management.io
+  resources:
+  - managedclusterview
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - work.open-cluster-management-extension.io
   resources:

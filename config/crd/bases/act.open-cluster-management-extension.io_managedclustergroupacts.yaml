@@ -41,26 +41,13 @@ spec:
                 description: List of ManagedClusterActions to be applied on the selected
                   clusters
                 items:
-                  description: ManagedClusterAction is the action that will be done
-                    on a cluster
+                  description: Action
                   properties:
-                    apiVersion:
-                      description: 'APIVersion defines the versioned schema of this
-                        representation of an object. Servers should convert recognized
-                        schemas to the latest internal value, and may reject unrecognized
-                        values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+                    name:
                       type: string
-                    kind:
-                      description: 'Kind is a string value representing the REST resource
-                        this object represents. Servers may infer this from the endpoint
-                        the client submits requests to. Cannot be updated. In CamelCase.
-                        More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-                      type: string
-                    metadata:
-                      description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata'
-                      type: object
                     spec:
-                      description: Spec defines the desired behavior of the action.
+                      description: ActionSpec defines the action to be processed on
+                        a cluster
                       properties:
                         actionType:
                           description: ActionType is the type of the action
@@ -84,96 +71,9 @@ spec:
                               x-kubernetes-preserve-unknown-fields: true
                           type: object
                       type: object
-                    status:
-                      description: Status describes the desired status of the action
-                      properties:
-                        conditions:
-                          description: Conditions represents the conditions of this
-                            resource on managed cluster
-                          items:
-                            description: "Condition contains details for one aspect
-                              of the current state of this API Resource. --- This
-                              struct is intended for direct use as an array at the
-                              field path .status.conditions.  For example, type FooStatus
-                              struct{     // Represents the observations of a foo's
-                              current state.     // Known .status.conditions.type
-                              are: \"Available\", \"Progressing\", and \"Degraded\"
-                              \    // +patchMergeKey=type     // +patchStrategy=merge
-                              \    // +listType=map     // +listMapKey=type     Conditions
-                              []metav1.Condition `json:\"conditions,omitempty\" patchStrategy:\"merge\"
-                              patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`
-                              \n     // other fields }"
-                            properties:
-                              lastTransitionTime:
-                                description: lastTransitionTime is the last time the
-                                  condition transitioned from one status to another.
-                                  This should be when the underlying condition changed.  If
-                                  that is not known, then using the time when the
-                                  API field changed is acceptable.
-                                format: date-time
-                                type: string
-                              message:
-                                description: message is a human readable message indicating
-                                  details about the transition. This may be an empty
-                                  string.
-                                maxLength: 32768
-                                type: string
-                              observedGeneration:
-                                description: observedGeneration represents the .metadata.generation
-                                  that the condition was set based upon. For instance,
-                                  if .metadata.generation is currently 12, but the
-                                  .status.conditions[x].observedGeneration is 9, the
-                                  condition is out of date with respect to the current
-                                  state of the instance.
-                                format: int64
-                                minimum: 0
-                                type: integer
-                              reason:
-                                description: reason contains a programmatic identifier
-                                  indicating the reason for the condition's last transition.
-                                  Producers of specific condition types may define
-                                  expected values and meanings for this field, and
-                                  whether the values are considered a guaranteed API.
-                                  The value should be a CamelCase string. This field
-                                  may not be empty.
-                                maxLength: 1024
-                                minLength: 1
-                                pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
-                                type: string
-                              status:
-                                description: status of the condition, one of True,
-                                  False, Unknown.
-                                enum:
-                                - "True"
-                                - "False"
-                                - Unknown
-                                type: string
-                              type:
-                                description: type of condition in CamelCase or in
-                                  foo.example.com/CamelCase. --- Many .condition.type
-                                  values are consistent across resources like Available,
-                                  but because arbitrary conditions can be useful (see
-                                  .node.status.conditions), the ability to deconflict
-                                  is important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
-                                maxLength: 316
-                                pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
-                                type: string
-                            required:
-                            - lastTransitionTime
-                            - message
-                            - reason
-                            - status
-                            - type
-                            type: object
-                          type: array
-                        result:
-                          description: Result references the related result of the
-                            action
-                          nullable: true
-                          type: object
-                          x-kubernetes-embedded-resource: true
-                          x-kubernetes-preserve-unknown-fields: true
-                      type: object
+                  required:
+                  - name
+                  - spec
                   type: object
                 type: array
               clusterSelector:
@@ -236,70 +136,34 @@ spec:
                   - name
                   type: object
                 type: array
-              managedClusterLabelAction:
-                description: Label actions to be applied on the selected clusters
+              placement:
+                description: Generic Reference
                 properties:
-                  afterAct:
-                    description: After the act is done make label action for the selected
-                      managed cluster.
-                    properties:
-                      addClusterLabels:
-                        additionalProperties:
-                          type: string
-                        description: AddClusterLabels is a map of key/value pairs
-                          labels that will be added to the selected managedClusters.
-                          If the label already exist it will be update its value
-                        type: object
-                      deleteClusterLabels:
-                        additionalProperties:
-                          type: string
-                        description: DeleteClusterLabels is a map of key/value pairs
-                          labels that will be deleted from the selected managedClusters.
-                        type: object
-                    type: object
-                  beforeAct:
-                    description: Before starting the act make label action for the
-                      selected managed cluster.
-                    properties:
-                      addClusterLabels:
-                        additionalProperties:
-                          type: string
-                        description: AddClusterLabels is a map of key/value pairs
-                          labels that will be added to the selected managedClusters.
-                          If the label already exist it will be update its value
-                        type: object
-                      deleteClusterLabels:
-                        additionalProperties:
-                          type: string
-                        description: DeleteClusterLabels is a map of key/value pairs
-                          labels that will be deleted from the selected managedClusters.
-                        type: object
-                    type: object
+                  kind:
+                    description: kind must be either placement or placementRule
+                    type: string
+                  name:
+                    description: Name
+                    type: string
+                  namespace:
+                    description: Namespace
+                    type: string
+                required:
+                - kind
+                - name
+                - namespace
                 type: object
               views:
                 description: List of ManagedClusterViews to be applied on the selected
                   clusters
                 items:
-                  description: ManagedClusterView is the view of resources on a managed
-                    cluster
+                  description: View
                   properties:
-                    apiVersion:
-                      description: 'APIVersion defines the versioned schema of this
-                        representation of an object. Servers should convert recognized
-                        schemas to the latest internal value, and may reject unrecognized
-                        values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+                    name:
                       type: string
-                    kind:
-                      description: 'Kind is a string value representing the REST resource
-                        this object represents. Servers may infer this from the endpoint
-                        the client submits requests to. Cannot be updated. In CamelCase.
-                        More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-                      type: string
-                    metadata:
-                      description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata'
-                      type: object
                     spec:
-                      description: Spec defines the desired configuration of a view
+                      description: ViewSpec defines the desired configuration of a
+                        view
                       properties:
                         scope:
                           description: Scope is the scope of the view on a cluster
@@ -329,96 +193,9 @@ spec:
                               type: string
                           type: object
                       type: object
-                    status:
-                      description: Status describes current status of a view
-                      properties:
-                        conditions:
-                          description: Conditions represents the conditions of this
-                            resource on managed cluster
-                          items:
-                            description: "Condition contains details for one aspect
-                              of the current state of this API Resource. --- This
-                              struct is intended for direct use as an array at the
-                              field path .status.conditions.  For example, type FooStatus
-                              struct{     // Represents the observations of a foo's
-                              current state.     // Known .status.conditions.type
-                              are: \"Available\", \"Progressing\", and \"Degraded\"
-                              \    // +patchMergeKey=type     // +patchStrategy=merge
-                              \    // +listType=map     // +listMapKey=type     Conditions
-                              []metav1.Condition `json:\"conditions,omitempty\" patchStrategy:\"merge\"
-                              patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`
-                              \n     // other fields }"
-                            properties:
-                              lastTransitionTime:
-                                description: lastTransitionTime is the last time the
-                                  condition transitioned from one status to another.
-                                  This should be when the underlying condition changed.  If
-                                  that is not known, then using the time when the
-                                  API field changed is acceptable.
-                                format: date-time
-                                type: string
-                              message:
-                                description: message is a human readable message indicating
-                                  details about the transition. This may be an empty
-                                  string.
-                                maxLength: 32768
-                                type: string
-                              observedGeneration:
-                                description: observedGeneration represents the .metadata.generation
-                                  that the condition was set based upon. For instance,
-                                  if .metadata.generation is currently 12, but the
-                                  .status.conditions[x].observedGeneration is 9, the
-                                  condition is out of date with respect to the current
-                                  state of the instance.
-                                format: int64
-                                minimum: 0
-                                type: integer
-                              reason:
-                                description: reason contains a programmatic identifier
-                                  indicating the reason for the condition's last transition.
-                                  Producers of specific condition types may define
-                                  expected values and meanings for this field, and
-                                  whether the values are considered a guaranteed API.
-                                  The value should be a CamelCase string. This field
-                                  may not be empty.
-                                maxLength: 1024
-                                minLength: 1
-                                pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
-                                type: string
-                              status:
-                                description: status of the condition, one of True,
-                                  False, Unknown.
-                                enum:
-                                - "True"
-                                - "False"
-                                - Unknown
-                                type: string
-                              type:
-                                description: type of condition in CamelCase or in
-                                  foo.example.com/CamelCase. --- Many .condition.type
-                                  values are consistent across resources like Available,
-                                  but because arbitrary conditions can be useful (see
-                                  .node.status.conditions), the ability to deconflict
-                                  is important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
-                                maxLength: 316
-                                pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
-                                type: string
-                            required:
-                            - lastTransitionTime
-                            - message
-                            - reason
-                            - status
-                            - type
-                            type: object
-                          type: array
-                        result:
-                          description: Result references the related result of the
-                            view
-                          nullable: true
-                          type: object
-                          x-kubernetes-embedded-resource: true
-                          x-kubernetes-preserve-unknown-fields: true
-                      type: object
+                  required:
+                  - name
+                  - spec
                   type: object
                 type: array
             type: object
@@ -426,20 +203,24 @@ spec:
             description: ManagedClusterGroupActStatus defines the observed state of
               ManagedClusterGroupAct
             properties:
+              appliedActions:
+                description: Actions applied to the selected clusters
+                type: string
               clusters:
                 description: List of the selected managedClusters with act status
                 items:
                   description: ClusterActState indicate the selected clusters act
                     status
                   properties:
-                    actionState:
-                      description: ManagedClusterAction resource  state
+                    actionsStatus:
+                      description: ManagedClusterActions Status ActionsStatus map[string]string
+                        `json:"actionsStatus,omitempty"`
                       type: string
                     name:
                       description: ManagedCluster Name
                       type: string
-                    viewState:
-                      description: ManagedClusterView resource  state
+                    viewsStatus:
+                      description: ManagedClusterViews Status
                       type: string
                   required:
                   - name
