@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
 )
@@ -24,50 +25,16 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// Generic Cluster Reference
-type GenericClusterReference struct {
-	// Cluster Name
-	Name string `json:"name"`
-}
-
-// Generic Placement Fields
-type GenericPlacementFields struct {
-	// Clusters listed with name will be selected and ignoring other clusterSelectors
-	Clusters        []GenericClusterReference `json:"clusters,omitempty"`
-	ClusterSelector *metav1.LabelSelector     `json:"clusterSelector,omitempty"`
-}
-
-// LabelWork label the selected managed clusters
-type LabelWork struct {
-	// AddClusterLabels is a map of key/value pairs labels that will be added to the selected managedClusters.
-	// If the label already exist it will be update its value
-	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
-	// DeleteClusterLabels is a map of key/value pairs labels that will be deleted from the selected managedClusters.
-	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
-}
-
-// ManagedClusterLabelAction define the desire state to label the selected managed clusters
-type ManagedClusterLabelWorkSpec struct {
-	// Before starting the manifest work label the selected managed cluster.
-	BeforeWork LabelWork `json:"beforeWork,omitempty"`
-	// After the manifest work is done make label the selected managed cluster.
-	AfterWork LabelWork `json:"afterWork,omitempty"`
-}
-
 // ManagedClusterGroupWorkSpec defines the desired state of ManagedClusterGroupWork
 type ManagedClusterGroupWorkSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Important: Run "make" to regenerate code after modifying this file
-	GenericPlacementFields `json:",inline"`
+	clusterv1beta1.GenericPlacementFields `json:",inline"`
 	// List of manifestWorks to be applied on the selected clusters
 	// +optional
 	ManifesWorks []workv1.ManifestWork `json:"manifesWorks,omitempty"`
-
-	// Label actions to be applied on the selected clusters
-	// +optional
-	ManagedClusterLabelAction *ManagedClusterLabelWorkSpec `json:"managedClusterLabelWork,omitempty"`
 }
 
 // ClusterWorkState indicate the selected clusters manifest work status

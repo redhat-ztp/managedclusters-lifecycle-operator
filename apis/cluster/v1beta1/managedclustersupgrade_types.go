@@ -32,6 +32,16 @@ const (
 	FailedState      = "Failed"
 )
 
+// Generic Reference
+type GenericPlacementReference struct {
+	// kind must be either placement or placementRule
+	Kind string `json:"kind"`
+	// Name
+	Name string `json:"name"`
+	// Namespace
+	Namespace string `json:"namespace"`
+}
+
 // Generic Operator Reference
 type GenericOperatorReference struct {
 	// Operator->Subscription Name
@@ -100,7 +110,10 @@ type OcpOperatorsSpec struct {
 type ManagedClustersUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	// +optional
+	Placement GenericPlacementReference `json:"placement,omitempty"`
 
+	// +optional
 	GenericPlacementFields `json:",inline"`
 
 	UpgradeStrategy *UpgradeStrategySpec `json:"upgradeStrategy,omitempty"`

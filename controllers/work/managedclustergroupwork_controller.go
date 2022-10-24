@@ -37,6 +37,7 @@ type ManagedClusterGroupWorkReconciler struct {
 //+kubebuilder:rbac:groups=work.open-cluster-management-extension.io,resources=managedclustergroupworks,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=work.open-cluster-management-extension.io,resources=managedclustergroupworks/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=work.open-cluster-management-extension.io,resources=managedclustergroupworks/finalizers,verbs=update
+//+kubebuilder:rbac:groups=work.open-cluster-management.io,resources=manifestwork,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

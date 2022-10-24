@@ -34,10 +34,11 @@ import (
 	actionv1beta1 "github.com/stolostron/cluster-lifecycle-api/action/v1beta1"
 	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	workv1 "open-cluster-management.io/api/work/v1"
 
 	actv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/act/v1beta1"
-	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	mclusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
 	workv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/work/v1beta1"
 	actcontrollers "github.com/redhat-ztp/managedclusters-lifecycle-operator/controllers/act"
 	clustercontrollers "github.com/redhat-ztp/managedclusters-lifecycle-operator/controllers/cluster"
@@ -54,6 +55,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(clusterv1beta1.AddToScheme(scheme))
+	utilruntime.Must(mclusterv1beta1.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(viewv1beta1.AddToScheme(scheme))
 	utilruntime.Must(actionv1beta1.AddToScheme(scheme))

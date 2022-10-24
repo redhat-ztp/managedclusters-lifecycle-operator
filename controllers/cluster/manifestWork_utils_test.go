@@ -74,6 +74,7 @@ func Test_getInstallPlanApproverJob(t *testing.T) {
 			assert.Equal(t, env.Value, "60")
 		}
 	}
+	fmt.Println(job)
 }
 
 func Test_CreateClusterVersionUpgradeManifestWork(t *testing.T) {

@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
 	actionv1beta1 "github.com/stolostron/cluster-lifecycle-api/action/v1beta1"
 	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,68 +26,51 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// Generic Cluster Reference
-type GenericClusterReference struct {
-	// Cluster Name
-	Name string `json:"name"`
+// Action
+type Action struct {
+	Name       string                   `json:"name"`
+	ActionSpec actionv1beta1.ActionSpec `json:"spec"`
 }
 
-// Generic Placement Fields
-type GenericPlacementFields struct {
-	// Clusters listed with name will be selected and ignoring other clusterSelectors
-	Clusters        []GenericClusterReference `json:"clusters,omitempty"`
-	ClusterSelector *metav1.LabelSelector     `json:"clusterSelector,omitempty"`
-}
-
-// Label Action define the desire action for labeling the selected managed clusters
-type LabelAction struct {
-	// AddClusterLabels is a map of key/value pairs labels that will be added to the selected managedClusters.
-	// If the label already exist it will be update its value
-	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
-	// DeleteClusterLabels is a map of key/value pairs labels that will be deleted from the selected managedClusters.
-	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
-}
-
-// ManagedClusterLabelAction define the desire state to label the selected managed clusters
-type ManagedClusterLabelActionSpec struct {
-	// Before starting the act make label action for the selected managed cluster.
-	BeforeAct LabelAction `json:"beforeAct,omitempty"`
-	// After the act is done make label action for the selected managed cluster.
-	AfterAct LabelAction `json:"afterAct,omitempty"`
+// View
+type View struct {
+	Name     string               `json:"name"`
+	ViewSpec viewv1beta1.ViewSpec `json:"spec"`
 }
 
 // ManagedClusterGroupActSpec defines the desired state of ManagedClusterGroupAct
 type ManagedClusterGroupActSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
-	GenericPlacementFields `json:",inline"`
+
+	// +optional
+	Placement clusterv1beta1.GenericPlacementReference `json:"placement,omitempty"`
+	// +optional
+	clusterv1beta1.GenericPlacementFields `json:",inline"`
 	// List of ManagedClusterActions to be applied on the selected clusters
 	// +optional
-	Actions []actionv1beta1.ManagedClusterAction `json:"actions,omitempty"`
+	Actions []Action `json:"actions,omitempty"`
 	// List of ManagedClusterViews to be applied on the selected clusters
 	// +optional
-	Views []viewv1beta1.ManagedClusterView `json:"views,omitempty"`
-	// Label actions to be applied on the selected clusters
-	// +optional
-	ManagedClusterLabelAction *ManagedClusterLabelActionSpec `json:"managedClusterLabelAction,omitempty"`
+	Views []View `json:"views,omitempty"`
 }
 
 // ClusterActState indicate the selected clusters act status
 type ClusterActState struct {
 	// ManagedCluster Name
 	Name string `json:"name"`
-	// ManagedClusterAction resource  state
-	ActionState string `json:"actionState,omitempty"`
-	// ManagedClusterView resource  state
-	ViewState string `json:"viewState,omitempty"`
+	// ManagedClusterActions Status
+	//ActionsStatus map[string]string `json:"actionsStatus,omitempty"`
+	ActionsStatus string `json:"actionsStatus,omitempty"`
+	// ManagedClusterViews Status
+	ViewsStatus string `json:"viewsStatus,omitempty"`
 }
 
 // ManagedClusterGroupActStatus defines the observed state of ManagedClusterGroupAct
 type ManagedClusterGroupActStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-
+	//Actions applied to the selected clusters
+	AppliedActions string `json:"appliedActions,omitempty"`
 	//List of the ManagedClusterGroupAct conditions
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-
 	// List of the selected managedClusters with act status
 	Clusters []*ClusterActState `json:"clusters,omitempty"`
 }
