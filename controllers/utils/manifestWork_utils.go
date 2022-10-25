@@ -1,4 +1,4 @@
-package cluster
+package utils
 
 import (
 	"context"
@@ -282,7 +282,7 @@ func getManifestWork(kubeclient client.Client, name string, ns string, timeOut s
 	return manifestWork, isTimeOut, nil
 }
 
-func isManifestWorkResourcesAvailable(kubeclient client.Client, name string, ns string, timeOut string) (bool, bool, error) {
+func IsManifestWorkResourcesAvailable(kubeclient client.Client, name string, ns string, timeOut string) (bool, bool, error) {
 	manifestwork, isTimeOut, err := getManifestWork(kubeclient, name, ns, timeOut)
 	if err != nil {
 		return false, isTimeOut, err
@@ -292,7 +292,7 @@ func isManifestWorkResourcesAvailable(kubeclient client.Client, name string, ns 
 }
 
 // Get the clusterVersion Upgrade  status (value); state, version, verified
-func getClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns string, timeOut string) (string, string, bool, string, bool, error) {
+func GetClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns string, timeOut string) (string, string, bool, string, bool, error) {
 	version, state, message := "", "", ""
 	verified := false
 	manifestwork, isTimeOut, err := getManifestWork(kubeclient, name, ns, timeOut)
@@ -319,7 +319,7 @@ func getClusterUpgradeManifestStatus(kubeclient client.Client, name string, ns s
 }
 
 // Get the Operator Upgrade Job status (name, value); active, succeeded or failed
-func getOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns string, timeOut string) (string, int, bool, error) {
+func GetOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns string, timeOut string) (string, int, bool, error) {
 	manifestwork, isTimeOut, err := getManifestWork(kubeclient, name, ns, timeOut)
 	if err != nil {
 		return "", 0, isTimeOut, err
@@ -335,7 +335,7 @@ func getOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns 
 	return "", 0, isTimeOut, fmt.Errorf("Operator Upgrade job not found %s", name)
 }
 
-func deleteManifestWork(kubeclient client.Client, name string, ns string) error {
+func DeleteManifestWork(kubeclient client.Client, name string, ns string) error {
 	manifestWork := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

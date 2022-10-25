@@ -28,13 +28,14 @@ import (
 // ManagedClusterGroupWorkSpec defines the desired state of ManagedClusterGroupWork
 type ManagedClusterGroupWorkSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
-	// Important: Run "make" to regenerate code after modifying this file
+	// +optional
+	Placement clusterv1beta1.GenericPlacementReference `json:"placement,omitempty"`
+	// +optional
 	clusterv1beta1.GenericPlacementFields `json:",inline"`
 	// List of manifestWorks to be applied on the selected clusters
 	// +optional
-	ManifesWorks []workv1.ManifestWork `json:"manifesWorks,omitempty"`
+	ManifesWork workv1.ManifestWorkSpec `json:"manifestWork,omitempty"`
 }
 
 // ClusterWorkState indicate the selected clusters manifest work status
@@ -42,9 +43,9 @@ type ClusterWorkState struct {
 	// ManagedCluster Name
 	Name string `json:"name"`
 	// ManagedCluster manifest work resources state
-	ManifestWorkState string `json:"manifestWorkState,omitempty"`
+	ManifestState string `json:"manifestState,omitempty"`
 	// ManagedCluster manifest work feedback fields
-	ManifestWorkFeedback map[string]string `json:"manifestWorkFeedback,omitempty"`
+	ManifestFeedback map[string]string `json:"manifestFeedback,omitempty"`
 }
 
 // ManagedClusterGroupWorkStatus defines the observed state of ManagedClusterGroupWork

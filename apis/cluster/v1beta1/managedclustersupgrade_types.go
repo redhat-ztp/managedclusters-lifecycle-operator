@@ -109,9 +109,9 @@ type OcpOperatorsSpec struct {
 // ManagedClustersUpgrade defines the desired state of ManagedClustersUpgrade
 type ManagedClustersUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// +optional
-	Placement GenericPlacementReference `json:"placement,omitempty"`
+
+	// Skip using placement for now as clusterID is a required attribute to get
+	// Placement GenericPlacementReference `json:"placement,omitempty"`
 
 	// +optional
 	GenericPlacementFields `json:",inline"`
@@ -151,7 +151,7 @@ type OperatorsStatus struct {
 }
 
 // ClusterStatus indicate the selected clusters upgrade status
-type ClusterStatusSpec struct {
+type ClusterStatus struct {
 	// ManagedCluster generated ID
 	ClusterID string `json:"clusterID"`
 	// ManagedCluster Name
@@ -171,10 +171,10 @@ type ManagedClustersUpgradeStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// List of the selected managedClusters with its upgrade status
-	Clusters []*ClusterStatusSpec `json:"clusters,omitempty"`
+	Clusters []*ClusterStatus `json:"clusters,omitempty"`
 
 	// List of the selected Canary managedClusters with its upgrade status
-	CanaryClusters []*ClusterStatusSpec `json:"canaryClusters,omitempty"`
+	CanaryClusters []*ClusterStatus `json:"canaryClusters,omitempty"`
 }
 
 //+kubebuilder:object:root=true
