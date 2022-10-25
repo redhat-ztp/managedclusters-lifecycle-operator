@@ -49,7 +49,7 @@ type ManagedClusterGroupWorkReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *ManagedClusterGroupWorkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	// TODO(user): your logic here
+
 	klog.Info("Hi, ManagedClusterGroupWork controller")
 	return ctrl.Result{}, nil
 }

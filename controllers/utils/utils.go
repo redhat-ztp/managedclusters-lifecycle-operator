@@ -20,13 +20,23 @@ import (
 )
 
 const (
-	TypeSelected = "Selected"
-	TypeApplied  = "Applied"
+	TypeSelected       = "Selected"
+	TypeApplied        = "Applied"
+	TypeInProgress     = "InProgress"
+	TypeComplete       = "Complete"
+	TypeFailed         = "Failed"
+	TypeCanaryComplete = "CanaryComplete"
+	TypeCanaryFailed   = "CanaryFailed"
 	//
-	ReasonApplied     = "ManagedClustersResourcesApplied"
-	ReasonNotSelected = "ManagedClustersNotSelected"
-	ReasonSelected    = "ManagedClustersSelected"
-	ReasonActionsDone = "ActionsDone"
+	ReasonApplied               = "ManagedClustersResourcesApplied"
+	ReasonNotSelected           = "ManagedClustersNotSelected"
+	ReasonSelected              = "ManagedClustersSelected"
+	ReasonUpgradeInProgress     = "ManagedClustersUpgradeInProgress"
+	ReasonUpgradeFailed         = "ManagedClustersUpgradeFailed"
+	ReasonUpgradeCanaryFailed   = "ManagedClustersCanaryUpgradeFailed"
+	ReasonUpgradeComplete       = "ManagedClustersUpgradeComplete"
+	ReasonUpgradeCanaryComplete = "ManagedClustersCanaryUpgradeComplete"
+	ReasonActionsDone           = "ActionsDone"
 	//
 	StateApplied           = "Applied"
 	StateNotingApplied     = "NotingApplied"
@@ -173,6 +183,32 @@ func GetActionsCompleteCondition(status metav1.ConditionStatus) metav1.Condition
 
 func GetProcessingCondition(status metav1.ConditionStatus) metav1.Condition {
 	return getCondition(viewv1beta1.ConditionViewProcessing, viewv1beta1.ReasonGetResource, "", status)
+}
+
+func GetFailedCondition(failedCount int) metav1.Condition {
+	return getCondition(TypeFailed, ReasonUpgradeFailed, GetFailedConditionMessage(failedCount),
+		metav1.ConditionTrue)
+}
+
+func GetCanaryFailedCondition(failedCount int) metav1.Condition {
+	return getCondition(TypeCanaryFailed, ReasonUpgradeCanaryFailed, GetFailedConditionMessage(failedCount),
+		metav1.ConditionTrue)
+}
+
+func GetFailedConditionMessage(failedCount int) string {
+	return fmt.Sprintf("ManagedClsuters upgrade failed \ncount: %d", failedCount)
+}
+
+func GetCompleteCondition() metav1.Condition {
+	return getCondition(TypeComplete, ReasonUpgradeComplete, "ManagedClsuters upgrade Complete", metav1.ConditionFalse)
+}
+
+func GetCanaryCompleteCondition() metav1.Condition {
+	return getCondition(TypeCanaryComplete, ReasonUpgradeCanaryComplete, "ManagedClsuters canary upgrade Complete", metav1.ConditionFalse)
+}
+
+func GetInProgressCondition() metav1.Condition {
+	return getCondition(TypeInProgress, ReasonUpgradeInProgress, "ManagedClsuters upgrade InProgress", metav1.ConditionFalse)
 }
 
 func getCondition(conditionType string, reason string, message string, status metav1.ConditionStatus) metav1.Condition {

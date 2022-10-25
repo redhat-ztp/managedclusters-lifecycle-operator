@@ -1,4 +1,4 @@
-package cluster
+package utils
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -20,7 +20,7 @@ func Test_GetConditions(t *testing.T) {
 	assert.Equal(t, metav1.ConditionTrue, condition.Status)
 
 	// check applied condition
-	condition = GetAppliedCondition()
+	condition = GetAppliedCondition(metav1.ConditionFalse)
 	assert.Equal(t, TypeApplied, condition.Type)
 	assert.Equal(t, metav1.ConditionFalse, condition.Status)
 
@@ -35,8 +35,8 @@ func Test_GetConditions(t *testing.T) {
 	assert.Equal(t, metav1.ConditionFalse, condition.Status)
 
 	// check failed condition
-	condition = GetFailedCondition(2, "cluster1, cluster2")
+	condition = GetFailedCondition(2)
 	assert.Equal(t, TypeFailed, condition.Type)
 	assert.Equal(t, metav1.ConditionTrue, condition.Status)
-	assert.True(t, strings.Contains(condition.Message, "cluster1, cluster2"))
+	assert.True(t, strings.Contains(condition.Message, "2"))
 }
