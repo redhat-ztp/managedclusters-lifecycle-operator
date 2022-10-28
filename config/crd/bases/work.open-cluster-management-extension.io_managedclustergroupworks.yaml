@@ -382,11 +382,6 @@ spec:
                   description: ClusterWorkState indicate the selected clusters manifest
                     work status
                   properties:
-                    manifestFeedback:
-                      additionalProperties:
-                        type: string
-                      description: ManagedCluster manifest work feedback fields
-                      type: object
                     manifestState:
                       description: ManagedCluster manifest work resources state
                       type: string

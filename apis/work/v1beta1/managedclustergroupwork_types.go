@@ -35,7 +35,7 @@ type ManagedClusterGroupWorkSpec struct {
 	clusterv1beta1.GenericPlacementFields `json:",inline"`
 	// List of manifestWorks to be applied on the selected clusters
 	// +optional
-	ManifesWork workv1.ManifestWorkSpec `json:"manifestWork,omitempty"`
+	ManifestWork workv1.ManifestWorkSpec `json:"manifestWork,omitempty"`
 }
 
 // ClusterWorkState indicate the selected clusters manifest work status
@@ -44,8 +44,6 @@ type ClusterWorkState struct {
 	Name string `json:"name"`
 	// ManagedCluster manifest work resources state
 	ManifestState string `json:"manifestState,omitempty"`
-	// ManagedCluster manifest work feedback fields
-	ManifestFeedback map[string]string `json:"manifestFeedback,omitempty"`
 }
 
 // ManagedClusterGroupWorkStatus defines the observed state of ManagedClusterGroupWork
