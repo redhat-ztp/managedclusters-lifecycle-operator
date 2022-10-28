@@ -60,7 +60,7 @@ type ManagedClusterGroupActReconciler struct {
 func (r *ManagedClusterGroupActReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
 	mcgAct := &actv1beta1.ManagedClusterGroupAct{}
-	// Set default reconcile for 30sec as managedClusterActoin stays for 60sec
+	// Set default reconcile for 20sec as managedClusterActoin stays for 60sec
 	result := ctrl.Result{RequeueAfter: 20 * time.Second}
 	err := r.Get(ctx, req.NamespacedName, mcgAct)
 
@@ -156,7 +156,15 @@ func (r *ManagedClusterGroupActReconciler) processSelectedCondition(mcgAct *actv
 	indx := 0
 	if deletedClusters.Len() > 0 {
 		for _, cls := range clusters {
-			if !deletedClusters.Has(cls.Name) {
+			if deletedClusters.Has(cls.Name) {
+				//Delete created Views
+				for _, view := range mcgAct.Spec.Views {
+					err = utils.DeleteMangedClusterView(r.Client, view.Name, cls.Name)
+					if err != nil {
+						klog.Error("Faild to delete ", err)
+					}
+				}
+			} else {
 				clusters[indx] = cls
 				indx++
 			}

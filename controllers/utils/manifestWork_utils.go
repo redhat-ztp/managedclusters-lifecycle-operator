@@ -5,13 +5,15 @@ import (
 	"fmt"
 	configv1 "github.com/openshift/api/config/v1"
 	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	workv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/work/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	//"k8s.io/klog"
+	"k8s.io/klog"
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
@@ -26,7 +28,123 @@ const (
 	OperatorUpgradeFailedState     = "failed"
 	OperatorUpgradeValidStateValue = 1
 	OseCliDefaultImage             = "registry.redhat.io/openshift4/ose-cli:latest"
+	//
+	MCGWork_Label   = "managedClusterGroupWork"
+	StateCreated    = "ManifestWorkCreated"
+	StateNotCreated = "NotCreated"
 )
+
+func CreateManifestWork(mcgWork *workv1beta1.ManagedClusterGroupWork, clusterNS string) (*workv1.ManifestWork, error) {
+	if clusterNS == "" {
+		return nil, fmt.Errorf("Invalid cluster namespace")
+	}
+
+	return &workv1.ManifestWork{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mcgWork.Name,
+			Namespace: clusterNS,
+			Labels:    map[string]string{MCGWork_Label: mcgWork.Namespace + "-" + mcgWork.Name},
+		},
+		Spec: mcgWork.Spec.ManifestWork}, nil
+}
+
+func getManifestWorkList(kubeclient client.Client, name string, namespace string) (*workv1.ManifestWorkList, error) {
+	manifestWorksList := &workv1.ManifestWorkList{}
+	ownerSelector, err := ConvertLabels(&metav1.LabelSelector{MatchLabels: map[string]string{MCGWork_Label: name}})
+
+	if err != nil {
+		klog.Error("label selector ", err)
+		return nil, err
+	}
+
+	err = kubeclient.List(context.TODO(), manifestWorksList, &client.ListOptions{LabelSelector: ownerSelector, Namespace: namespace})
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+
+	return manifestWorksList, nil
+}
+
+func GetManifestWorks(kubeclient client.Client, name string, namespace string) (map[string]*workv1.ManifestWork, error) {
+	manifestWorksList, err := getManifestWorkList(kubeclient, name, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	mManifestWorks := make(map[string]*workv1.ManifestWork)
+
+	for _, manifestWork := range manifestWorksList.Items {
+		// the cluster will not be returned if it is in terminating process
+		if manifestWork.DeletionTimestamp != nil && !manifestWork.DeletionTimestamp.IsZero() {
+			continue
+		}
+
+		// reduce memory consumption by cleaning up ManagedFields, Annotations, Finalizers for each managedCluster
+		manifestWork.DeepCopy().SetManagedFields(nil)
+		manifestWork.DeepCopy().SetAnnotations(nil)
+		manifestWork.DeepCopy().SetFinalizers(nil)
+
+		mManifestWorks[manifestWork.Namespace+"-"+manifestWork.Name] = manifestWork.DeepCopy()
+	}
+	return mManifestWorks, nil
+}
+
+func DeleteManifestWorks(kubeclient client.Client, mcgWorkLabel string) error {
+	manifestWorksList, err := getManifestWorkList(kubeclient, mcgWorkLabel, "")
+	if err != nil {
+		return err
+	}
+
+	for _, manifestWork := range manifestWorksList.Items {
+		err = DeleteManifestWork(kubeclient, manifestWork.Name, manifestWork.Namespace)
+		if err != nil {
+			klog.Error("Faild to delete ", err)
+		}
+	}
+
+	return nil
+}
+
+func GetManifestWorkStatus(manifestWork *workv1.ManifestWork) string {
+	status := StatusNotFound
+	for _, condition := range manifestWork.Status.Conditions {
+		if condition.Type == workv1.WorkApplied && condition.Status == metav1.ConditionFalse {
+			status = "Not" + workv1.WorkApplied
+			break
+		} else if condition.Type == workv1.WorkApplied && condition.Status == metav1.ConditionTrue &&
+			status != workv1.WorkAvailable {
+			status = workv1.WorkApplied
+		}
+		if condition.Type == workv1.WorkAvailable && condition.Status == metav1.ConditionFalse {
+			status = "Not" + workv1.WorkAvailable
+			break
+		} else if condition.Type == workv1.WorkAvailable && condition.Status == metav1.ConditionTrue {
+			status = workv1.WorkAvailable
+		}
+	}
+
+	return status
+}
+
+func EqualManifestWorkSpec(firstManifestSpec workv1.ManifestWorkSpec, secondManifestSpec workv1.ManifestWorkSpec) bool {
+	by1, err := yaml.Marshal(firstManifestSpec)
+
+	if err != nil {
+		klog.Error("firstManifestSpec Marshal ", err)
+	}
+	by2, err := yaml.Marshal(secondManifestSpec)
+
+	if err != nil {
+		klog.Error("SecondManifestSpec Marshal ", err)
+	}
+
+	if string(by1) != string(by2) {
+		klog.Info("ManifestWork spec updated")
+		return false
+	}
+
+	return true
+}
 
 func CreateOperatorUpgradeManifestWork(clusterName string, operatorConfig *clusterv1beta1.OcpOperatorsSpec, timeout string, image string) (*workv1.ManifestWork, error) {
 	if clusterName == "" {
@@ -335,11 +453,15 @@ func GetOperatorUpgradeManifestStatus(kubeclient client.Client, name string, ns 
 	return "", 0, isTimeOut, fmt.Errorf("Operator Upgrade job not found %s", name)
 }
 
-func DeleteManifestWork(kubeclient client.Client, name string, ns string) error {
+func DeleteManifestWork(kubeclient client.Client, name string, namespace string) error {
+	if name == "" || namespace == "" {
+		return fmt.Errorf("Invalid namespace or name")
+	}
+
 	manifestWork := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: ns,
+			Namespace: namespace,
 		},
 	}
 

@@ -16,6 +16,7 @@ import (
 	"k8s.io/klog"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
+	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -27,6 +28,7 @@ const (
 	TypeFailed         = "Failed"
 	TypeCanaryComplete = "CanaryComplete"
 	TypeCanaryFailed   = "CanaryFailed"
+	TypeCreated        = "Created"
 	//
 	ReasonApplied               = "ManagedClustersResourcesApplied"
 	ReasonNotSelected           = "ManagedClustersNotSelected"
@@ -37,6 +39,7 @@ const (
 	ReasonUpgradeComplete       = "ManagedClustersUpgradeComplete"
 	ReasonUpgradeCanaryComplete = "ManagedClustersCanaryUpgradeComplete"
 	ReasonActionsDone           = "ActionsDone"
+	ReasonCreated               = "ManifestWorkCreated"
 	//
 	StateApplied           = "Applied"
 	StateNotingApplied     = "NotingApplied"
@@ -173,8 +176,16 @@ func GetSelectedCondition(numClusters int) metav1.Condition {
 		fmt.Sprintf(message, numClusters), metav1.ConditionFalse)
 }
 
+func GetCreatedCondition(status metav1.ConditionStatus) metav1.Condition {
+	return getCondition(TypeCreated, ReasonCreated, "ManagedClusters ManifestWork created", status)
+}
+
 func GetAppliedCondition(status metav1.ConditionStatus) metav1.Condition {
 	return getCondition(TypeApplied, ReasonApplied, "ManagedClsuters Resources applied", status)
+}
+
+func GetAvailableCondition(status metav1.ConditionStatus) metav1.Condition {
+	return getCondition(workv1.WorkAvailable, workv1.WorkAvailable, "ManagedClusters ManifestWork available", status)
 }
 
 func GetActionsCompleteCondition(status metav1.ConditionStatus) metav1.Condition {
@@ -222,7 +233,7 @@ func getCondition(conditionType string, reason string, message string, status me
 }
 
 func CreateView(mcgaName string, namespace string, viewSpec actv1beta1.View) (*viewv1beta1.ManagedClusterView, error) {
-	if namespace == "" || viewSpec.Name == "" {
+	if mcgaName == "" || namespace == "" || viewSpec.Name == "" {
 		return nil, fmt.Errorf("Invalid namespace or name")
 	}
 
@@ -280,6 +291,17 @@ func GetMangedClusterViews(kubeclient client.Client, mcgaName string, namespace 
 	return mClusterViewMap, nil
 }
 
+func DeleteMangedClusterView(kubeclient client.Client, name string, namespace string) error {
+	if name == "" || namespace == "" {
+		return fmt.Errorf("Invalid namespace or name")
+	}
+
+	return kubeclient.Delete(context.TODO(), &viewv1beta1.ManagedClusterView{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace}})
+}
+
 func DeleteMangedClusterViews(kubeclient client.Client, mcgAct *actv1beta1.ManagedClusterGroupAct, all bool) error {
 	var ownerSelector labels.Selector
 	var err error
@@ -311,10 +333,7 @@ func DeleteMangedClusterViews(kubeclient client.Client, mcgAct *actv1beta1.Manag
 	}
 
 	for _, mcView := range mClusterViewlist.Items {
-		err = kubeclient.Delete(context.TODO(), &viewv1beta1.ManagedClusterView{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      mcView.Name,
-				Namespace: mcView.Namespace}})
+		err = DeleteMangedClusterView(kubeclient, mcView.Name, mcView.Namespace)
 		if err != nil {
 			klog.Error("Faild to delete ", err)
 		}
