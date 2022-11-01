@@ -17,7 +17,8 @@ limitations under the License.
 package v1beta1
 
 import (
-	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	common "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/common/v1beta1"
+	//clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
 )
@@ -30,9 +31,9 @@ type ManagedClusterGroupWorkSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 
 	// +optional
-	Placement clusterv1beta1.GenericPlacementReference `json:"placement,omitempty"`
+	Placement common.GenericPlacementReference `json:"placement,omitempty"`
 	// +optional
-	clusterv1beta1.GenericPlacementFields `json:",inline"`
+	common.GenericPlacementFields `json:",inline"`
 	// List of manifestWorks to be applied on the selected clusters
 	// +optional
 	ManifestWork workv1.ManifestWorkSpec `json:"manifestWork,omitempty"`

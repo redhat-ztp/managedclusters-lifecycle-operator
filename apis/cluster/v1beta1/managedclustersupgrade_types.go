@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	configv1 "github.com/openshift/api/config/v1"
+	common "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/common/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,16 +33,6 @@ const (
 	FailedState      = "Failed"
 )
 
-// Generic Reference
-type GenericPlacementReference struct {
-	// kind must be either placement or placementRule
-	Kind string `json:"kind"`
-	// Name
-	Name string `json:"name"`
-	// Namespace
-	Namespace string `json:"namespace"`
-}
-
 // Generic Operator Reference
 type GenericOperatorReference struct {
 	// Operator->Subscription Name
@@ -50,23 +41,10 @@ type GenericOperatorReference struct {
 	Namespace string `json:"namespace"`
 }
 
-// Generic Cluster Reference
-type GenericClusterReference struct {
-	// Cluster Name
-	Name string `json:"name"`
-}
-
-// Generic Placement Fields
-type GenericPlacementFields struct {
-	// Clusters listed with name will be selected and ignoring other clusterSelectors
-	Clusters        []GenericClusterReference `json:"clusters,omitempty"`
-	ClusterSelector *metav1.LabelSelector     `json:"clusterSelector,omitempty"`
-}
-
 // UpgradeStrategy defines the upgrades Strategy
 type UpgradeStrategySpec struct {
 	// CanaryClusters defines the list of managedClusters that should be remediated first
-	CanaryClusters GenericPlacementFields `json:"canaryClusters,omitempty"`
+	CanaryClusters common.GenericPlacementFields `json:"canaryClusters,omitempty"`
 	//kubebuilder:validation:Minimum=1
 	//+kubebuilder:default=10
 	// Max number of clusters to perform upgrade at the same time
@@ -111,10 +89,10 @@ type ManagedClustersUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 
 	// Skip using placement for now as clusterID is a required attribute to get
-	// Placement GenericPlacementReference `json:"placement,omitempty"`
+	// Placement common.GenericPlacementReference `json:"placement,omitempty"`
 
 	// +optional
-	GenericPlacementFields `json:",inline"`
+	common.GenericPlacementFields `json:",inline"`
 
 	UpgradeStrategy *UpgradeStrategySpec `json:"upgradeStrategy,omitempty"`
 	// +optional
@@ -167,7 +145,7 @@ type ManagedClustersUpgradeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	//Conditions contains the different condition statuses for ManagedClustersUpgrade
+	// Conditions contains the different condition statuses for ManagedClustersUpgrade
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// List of the selected managedClusters with its upgrade status

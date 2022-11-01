@@ -17,7 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
-	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	common "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/common/v1beta1"
 	actionv1beta1 "github.com/stolostron/cluster-lifecycle-api/action/v1beta1"
 	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,9 +43,9 @@ type ManagedClusterGroupActSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// +optional
-	Placement clusterv1beta1.GenericPlacementReference `json:"placement,omitempty"`
+	Placement common.GenericPlacementReference `json:"placement,omitempty"`
 	// +optional
-	clusterv1beta1.GenericPlacementFields `json:",inline"`
+	common.GenericPlacementFields `json:",inline"`
 	// List of ManagedClusterActions to be applied on the selected clusters
 	// +optional
 	Actions []Action `json:"actions,omitempty"`
