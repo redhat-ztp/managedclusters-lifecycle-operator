@@ -19,22 +19,18 @@ package cluster
 import (
 	"context"
 	"time"
-	//"fmt"
 
 	clusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	common "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/common/v1beta1"
 	utils "github.com/redhat-ztp/managedclusters-lifecycle-operator/controllers/utils"
-	//clusterv1 "open-cluster-management.io/api/cluster/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
-	//workv1 "open-cluster-management.io/api/work/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	//"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // ManagedClustersUpgradeReconciler reconciles a ManagedClustersUpgrade object
@@ -520,7 +516,7 @@ func (r *ManagedClustersUpgradeReconciler) processFailedCondition(managedCluster
 	return (failedCount == len(clusters) && failedCount != 0), failedCount
 }
 
-func (r *ManagedClustersUpgradeReconciler) getClustersList(kubeClient client.Client, placement clusterv1beta1.GenericPlacementFields, existingClustersList []*clusterv1beta1.ClusterStatus) ([]*clusterv1beta1.ClusterStatus, error) {
+func (r *ManagedClustersUpgradeReconciler) getClustersList(kubeClient client.Client, placement common.GenericPlacementFields, existingClustersList []*clusterv1beta1.ClusterStatus) ([]*clusterv1beta1.ClusterStatus, error) {
 	existingClusters := sets.NewString()
 	for _, cluster := range existingClustersList {
 		existingClusters.Insert(cluster.Name)

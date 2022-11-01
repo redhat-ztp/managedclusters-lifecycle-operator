@@ -159,7 +159,7 @@ func (r *ManagedClusterGroupActReconciler) processSelectedCondition(mcgAct *actv
 			if deletedClusters.Has(cls.Name) {
 				//Delete created Views
 				for _, view := range mcgAct.Spec.Views {
-					err = utils.DeleteMangedClusterView(r.Client, view.Name, cls.Name)
+					err = utils.DeleteMangedClusterView(r.Client, mcgAct.Name+"-"+view.Name, cls.Name)
 					if err != nil {
 						klog.Error("Faild to delete ", err)
 					}
@@ -193,7 +193,7 @@ func (r *ManagedClusterGroupActReconciler) processAppliedCondition(ctx context.C
 
 	clusters := mcgAct.Status.Clusters
 
-	addActions, _, actionsMap, actionsStr := utils.GetActions(mcgAct.Status.AppliedActions, mcgAct.Spec.Actions, mcgAct.Name)
+	addActions, _, actionsMap, actionsStr := utils.GetActions(mcgAct.Status.AppliedActions, mcgAct.Spec.Actions)
 
 	// Delete managedCluserViews removed from mcgAct
 	utils.DeleteMangedClusterViews(r.Client, mcgAct, false)
@@ -202,40 +202,37 @@ func (r *ManagedClusterGroupActReconciler) processAppliedCondition(ctx context.C
 	for _, cluster := range clusters {
 		actionStatus := ""
 		mClusterActions, err := utils.GetMangedClusterActions(r.Client, mcgAct.Name, cluster.Name)
-		//klog.Info("len mClusterActions; ", len(mClusterActions), "mcga name; ", mcgAct.Name)
+		//klog.Info("len mClusterActions; ", len(mClusterActions), "mcga name; ", mcgAct.Name, "cluster name: ", cluster.Name)
 		if err != nil {
 			klog.Error("Failed to get mClusterActions: ", err)
 		}
 
-		for addAction, _ := range addActions {
-			mClusterAction, err := utils.CreateAction(mcgAct.Name, cluster.Name, actionsMap[mcgAct.Name+"-"+addAction])
-			if err != nil {
-				klog.Error("Failed to create action", err)
-				actionStatus = actionStatus + addAction + "-" + utils.StateNotingApplied + " "
-				allApplied = false
-				continue
-			}
-			//klog.Info("Create mClusterAction ", mClusterAction.Name)
-			err = r.Client.Create(ctx, mClusterAction)
-			if err != nil {
-				klog.Error("Failed create mClusterAction: ", err)
-				actionStatus = actionStatus + addAction + "-" + utils.StateNotingApplied + " "
-				allApplied = false
-				continue
-			}
-		}
-
-		for name, mClusterAction := range mClusterActions {
-			if _, ok := actionsMap[name]; !ok {
-				continue
-			}
-			status, reason, err := utils.GetManagedClusterActionStatus(mClusterAction)
-			if err != nil {
-				klog.Warning("Failed to get action Status: ", err)
-				actionStatus = actionStatus + name + "-" + reason + " "
-			}
-			if !status {
-				actionStatus = actionStatus + name + "-" + reason + " "
+		for actionName, _ := range actionsMap {
+			if cluster.ActionsStatus == "" || addActions.Has(actionName) {
+				mClusterAction, err := utils.CreateAction(mcgAct.Name, cluster.Name, actionsMap[actionName])
+				if err != nil {
+					klog.Error("Failed to create action", err)
+					actionStatus = actionStatus + actionName + "-" + utils.StateNotingApplied + " "
+					allApplied = false
+					continue
+				}
+				//klog.Info("Create mClusterAction ", mClusterAction.Name, " cluster; ", cluster.Name)
+				err = r.Client.Create(ctx, mClusterAction)
+				if err != nil {
+					klog.Error("Failed create mClusterAction: ", err)
+					actionStatus = actionStatus + actionName + "-" + utils.StateNotingApplied + " "
+					allApplied = false
+					continue
+				}
+			} else if mClusterAction, ok := mClusterActions[mcgAct.Name+"-"+actionName]; ok {
+				status, reason, err := utils.GetManagedClusterActionStatus(mClusterAction)
+				if err != nil {
+					klog.Warning("Failed to get action Status: ", err)
+					actionStatus = actionStatus + actionName + "-" + reason + " "
+				}
+				if !status {
+					actionStatus = actionStatus + actionName + "-" + reason + " "
+				}
 			}
 		}
 

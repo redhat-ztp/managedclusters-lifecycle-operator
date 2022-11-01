@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	actv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/act/v1beta1"
-	managedClusterv1beta1 "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/cluster/v1beta1"
+	common "github.com/redhat-ztp/managedclusters-lifecycle-operator/apis/common/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -103,7 +103,7 @@ func ConvertLabels(labelSelector *metav1.LabelSelector) (labels.Selector, error)
 }
 
 // Get ManagedCluster list based on the given label selector
-func GetManagedClusterList(kubeclient client.Client, placement managedClusterv1beta1.GenericPlacementFields, existingClusters sets.String) (map[string]*clusterv1.ManagedCluster, sets.String, sets.String, error) {
+func GetManagedClusterList(kubeclient client.Client, placement common.GenericPlacementFields, existingClusters sets.String) (map[string]*clusterv1.ManagedCluster, sets.String, sets.String, error) {
 	mClusterMap := make(map[string]*clusterv1.ManagedCluster)
 	addedClusters, deletedClusters := sets.NewString(), sets.NewString()
 
@@ -404,7 +404,7 @@ func GetManagedClusterActionStatus(mClusteAction *actionv1beta1.ManagedClusterAc
 	return false, StatusNotFound, fmt.Errorf("ConditionActionComplete not found")
 }
 
-func GetActions(appliedActions string, newActions []actv1beta1.Action, mcgName string) (sets.String, sets.String, map[string]actv1beta1.Action, string) {
+func GetActions(appliedActions string, newActions []actv1beta1.Action) (sets.String, sets.String, map[string]actv1beta1.Action, string) {
 	appliedActionsSet, newActionsSet := sets.NewString(), sets.NewString()
 	newActionsMap := make(map[string]actv1beta1.Action)
 
@@ -417,7 +417,7 @@ func GetActions(appliedActions string, newActions []actv1beta1.Action, mcgName s
 
 	actionsStr := ""
 	for _, action := range newActions {
-		newActionsMap[mcgName+"-"+action.Name] = action
+		newActionsMap[action.Name] = action
 		newActionsSet.Insert(action.Name)
 		actionsStr = actionsStr + action.Name + " "
 	}
